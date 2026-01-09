@@ -26,6 +26,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
+  bool hasNotification = true;
 
   final List<Widget> _screens = [
     HomePage(),
@@ -50,13 +51,11 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    final double bottomInset = MediaQuery.of(context).padding.bottom;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F2FF),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFFFFFFFF),
+        backgroundColor: Colors.white,
         toolbarHeight: 56,
         titleSpacing: 8,
         title: const Text(
@@ -77,19 +76,37 @@ class _MainPageState extends State<MainPage> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              icon: const Icon(CupertinoIcons.bell, color: Colors.black),
-              onPressed: () {},
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  icon: const Icon(CupertinoIcons.bell, color: Colors.black),
+                  onPressed: () {},
+                ),
+                if (hasNotification)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
       ),
       body: _screens[_currentIndex],
-      bottomNavigationBar: Container(
-        color: Colors.white,
-        padding: EdgeInsets.fromLTRB(12, 8, 12, 8 + bottomInset),
-        child: SizedBox(
-          height: 56,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 8),
           child: Row(
             children: List.generate(4, (index) {
               final bool isSelected = _currentIndex == index;
@@ -103,7 +120,8 @@ class _MainPageState extends State<MainPage> {
                     });
                   },
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    margin: const EdgeInsets.symmetric(horizontal: 17),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFFE9DFFF)
@@ -111,23 +129,24 @@ class _MainPageState extends State<MainPage> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           _icons[index],
-                          size: 22,
+                          size: 20,
                           color: isSelected
                               ? const Color(0xFFB388FF)
                               : Colors.grey,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           _labels[index],
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w400,
+                            fontSize: 9,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                             color: isSelected
                                 ? const Color(0xFFB388FF)
                                 : Colors.grey,
@@ -147,3 +166,4 @@ class _MainPageState extends State<MainPage> {
     );
   }
 }
+
