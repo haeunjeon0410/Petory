@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'home/home.dart';
-import 'record/record_page.dart'; // 파일이 없다면 주석 처리
+import 'record/record_page.dart';
 import 'nutrition.dart'; // 파일이 없다면 주석 처리
 import 'aichat.dart'; // 파일이 없다면 주석 처리
 
@@ -11,6 +11,8 @@ void main() {
 }
 
 class PetoryApp extends StatelessWidget {
+  const PetoryApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -31,6 +33,8 @@ class PetoryApp extends StatelessWidget {
 }
 
 class MainPage extends StatefulWidget {
+  const MainPage({super.key});
+
   @override
   State<MainPage> createState() => _MainPageState();
 }
@@ -39,11 +43,11 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   bool hasNotification = true;
 
-  final List<Widget> _screens = [
+  final List<Widget> screens = [
     HomePage(),
-    Container(),
-    Container(),
-    Container(),
+    RecordPage(),
+    NutritionPage(),
+    AiPage(),
   ];
 
   final List<IconData> _icons = [
@@ -57,6 +61,12 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    // final List<Widget> screens = [
+    //   HomePage(),
+    //   RecordPage(),
+    //   NutritionPage(),
+    //   AiPage(),
+    // ];
     return Scaffold(
       // [핵심 변경 1] 몸통(Body) 전체의 배경색을 '연한 보라색'으로 설정
       // 이렇게 하면 콘텐츠가 짧아도 화면 중간이 보라색으로 꽉 찹니다.
@@ -113,7 +123,7 @@ class _MainPageState extends State<MainPage> {
         ],
       ),
 
-      body: _screens[_currentIndex],
+      body: screens[_currentIndex],
 
       bottomNavigationBar: SafeArea(
         top: false,
