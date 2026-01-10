@@ -69,6 +69,7 @@ class _MainPageState extends State<MainPage> {
         elevation: 0,
         // [핵심 변경 2] 앱 바는 '흰색' 유지 (몸통과 색 분리)
         backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
         toolbarHeight: 56,
         titleSpacing: 8,
         title: const Text(
