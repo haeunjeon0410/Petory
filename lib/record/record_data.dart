@@ -1,14 +1,5 @@
 import 'package:flutter/material.dart';
 
-const List<String> recordImages = [
-  'assets/images/1.jpg',
-  'assets/images/2.jpg',
-  'assets/images/3.jpg',
-  'assets/images/4.jpg',
-  'assets/images/5.jpg',
-  'assets/images/6.jpg',
-];
-
 class Schedule {
   final DateTime date;
   final String title;
@@ -32,6 +23,7 @@ DateTime normalizeDate(DateTime date) {
 }
 
 final Map<DateTime, List<Schedule>> schedules = {};
+final Map<DateTime, List<String>> photos = {};
 
 List<Schedule> getActiveAlarmsForNext24Hours() {
   final now = DateTime.now();

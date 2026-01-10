@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import 'schedule/schedule_detail_page.dart';
 import 'record_data.dart' as record;
+import 'photo_grid_section.dart';
 
 class RecordPage extends StatefulWidget {
   const RecordPage({super.key});
@@ -15,7 +17,18 @@ class _RecordPageState extends State<RecordPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
-  final List<String> _images = ['assets/images/1.jpg', 'assets/images/2.jpg', 'assets/images/3.jpg', 'assets/images/4.jpg', 'assets/images/5.jpg', 'assets/images/6.jpg'];
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        final key = record.normalizeDate(_selectedDay);
+        record.photos.putIfAbsent(key, () => []);
+        record.photos[key]!.add(image.path);
+      });
+    }
+  }
 
   Widget _buildDayCell(DateTime day, {Color? textColor}) {
     Color dayColor = Colors.black;
@@ -146,15 +159,18 @@ class _RecordPageState extends State<RecordPage> {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
+              const SizedBox(height: 16),
               _buildCalendar(),
               const SizedBox(height: 24),
-              _buildPhotoGrid()
+              PhotoGridSection(focusedDay: _focusedDay),
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _pickImage,
+        backgroundColor: const Color(0xFF44403B),
+        child: const Icon(Icons.camera_alt, color: Colors.white),
       ),
     );
   }
@@ -205,48 +221,6 @@ class _RecordPageState extends State<RecordPage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPhotoGrid() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _images.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 20,
-        crossAxisSpacing: 20,
-        childAspectRatio: 0.82,
-      ),
-      itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 6))],
-          ),
-          child: Column(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-                child: AspectRatio(aspectRatio: 1, child: Image.asset(_images[index], fit: BoxFit.cover)),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.calendar_today, size: 14),
-                    const SizedBox(width: 6),
-                    Text(DateFormat('yyyy년 M월 d일').format(_selectedDay), style: const TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
