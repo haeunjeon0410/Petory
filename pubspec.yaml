@@ -34,9 +34,12 @@ dependencies:
     sdk: flutter
   table_calendar: ^3.0.9
   cupertino_icons: ^1.0.8
+  intl: ^0.20.2
+  image_picker: ^1.2.1
+  emoji_picker_flutter: ^4.4.0
+  flutter_localizations:
   flutter_colorpicker: ^1.0.3
-  image_picker: ^1.0.7
-
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
