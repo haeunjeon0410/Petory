@@ -218,6 +218,11 @@ class _CalendarSectionState extends State<CalendarSection> {
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             rowHeight: 72,
             daysOfWeekHeight: 32,
+            onPageChanged: (focusedDay) {
+              setState(() {
+                _focusedDay = focusedDay;
+              });
+            },
             onDaySelected: (selectedDay, focusedDay) {
               setState(() {
                 _selectedDay = selectedDay;

@@ -186,6 +186,11 @@ class _RecordPageState extends State<RecordPage> {
             locale: 'ko_KR', firstDay: DateTime.utc(2020, 1, 1), lastDay: DateTime.utc(2035, 12, 31),
             focusedDay: _focusedDay, rowHeight: 72, daysOfWeekHeight: 32,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            onPageChanged: (focusedDay) {
+              setState(() {
+                _focusedDay = focusedDay;
+              });
+            },
             onDaySelected: (selectedDay, focusedDay) {
               setState(() { _selectedDay = selectedDay; _focusedDay = focusedDay; });
               _showScheduleListDialog(context, selectedDay);
