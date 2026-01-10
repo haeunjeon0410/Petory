@@ -123,7 +123,10 @@ class _MainPageState extends State<MainPage> {
         ],
       ),
 
-      body: screens[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex, // 현재 보여줄 페이지 번호
+        children: screens, // 모든 페이지를 미리 쌓아둠
+      ),
 
       bottomNavigationBar: SafeArea(
         top: false,
