@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'register_pet.dart';
 import 'add_task_sheet.dart';
 import 'checklist_item.dart';
@@ -381,6 +382,12 @@ class _HomePageState extends State<HomePage> {
   // --- 이하 UI Helper (프로필 카드 등 간단한 것은 여기에 둠) ---
 
   Widget _buildProfileCard(String petName, Map<String, dynamic> profileData) {
+    // [1] 강아지/고양이 이모지 결정 로직
+    String petType = profileData['type'] ?? "강아지";
+    String typeEmoji = petType == "강아지"
+        ? "🐶"
+        : (petType == "고양이" ? "🐱" : "🐾");
+
     return GestureDetector(
       onTap: () async {
         final updatedData = await showDialog(
@@ -426,16 +433,34 @@ class _HomePageState extends State<HomePage> {
         ),
         child: Row(
           children: [
-            const CircleAvatar(
-              radius: 38,
-              backgroundColor: Colors.grey,
-              backgroundImage: NetworkImage('https://placedog.net/100/100'),
+            // 프로필 이미지 (기존 코드 유지)
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[200],
+                image:
+                    (profileData['image'] != null &&
+                        profileData['image'] is File)
+                    ? DecorationImage(
+                        image: FileImage(profileData['image']),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: (profileData['image'] == null)
+                  ? Icon(Icons.pets, size: 40, color: Colors.grey[400])
+                  : null,
             ),
             const SizedBox(width: 18),
+
+            // 텍스트 정보
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // [2] 첫 번째 줄: 이름 + 이모지(🐶/🐱)
                   Row(
                     children: [
                       Text(
@@ -443,22 +468,39 @@ class _HomePageState extends State<HomePage> {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 0, 0, 0),
+                          color: Color(0xFF43403C),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      if (profileData['gender'] == 'male')
-                        const Icon(Icons.male, color: Colors.blue, size: 20)
-                      else if (profileData['gender'] == 'female')
-                        const Icon(Icons.female, color: Colors.red, size: 20),
+                      // 여기에 이모지를 표시합니다.
+                      Text(typeEmoji, style: const TextStyle(fontSize: 20)),
                     ],
                   ),
+
                   const SizedBox(height: 4),
-                  Text(
-                    "${profileData['species'] ?? '종 정보 없음'} • ${profileData['age'] ?? '?'}살",
-                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+
+                  // [3] 두 번째 줄: 품종 • 나이 + 성별 아이콘(♂/♀)
+                  Row(
+                    children: [
+                      Text(
+                        "${profileData['species'] ?? '품종 모름'} • ${profileData['age'] ?? '?'}살",
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // 성별 아이콘을 여기로 옮겼습니다.
+                      if (profileData['gender'] == 'male')
+                        const Icon(Icons.male, color: Colors.blue, size: 16)
+                      else if (profileData['gender'] == 'female')
+                        const Icon(Icons.female, color: Colors.red, size: 16),
+                    ],
                   ),
+
                   const SizedBox(height: 10),
+
+                  // 키/체중 태그 (기존 코드 유지)
                   Row(
                     children: [
                       _buildTag(

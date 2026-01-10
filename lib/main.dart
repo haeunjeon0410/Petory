@@ -119,6 +119,7 @@ class _MainPageState extends State<MainPage> {
 
       bottomNavigationBar: SafeArea(
         top: false,
+        bottom: false,
         child: Container(
           // [핵심 변경 3] 하단 네비게이션 바도 '흰색' 유지
           color: Colors.white,
@@ -140,7 +141,7 @@ class _MainPageState extends State<MainPage> {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFE9DFFF)
+                          ? const Color(0xFFF1F2ED)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -152,7 +153,7 @@ class _MainPageState extends State<MainPage> {
                           _icons[index],
                           size: 20,
                           color: isSelected
-                              ? const Color(0xFFB388FF)
+                              ? const Color(0xFF44403B)
                               : Colors.grey,
                         ),
                         const SizedBox(height: 2),
@@ -164,7 +165,7 @@ class _MainPageState extends State<MainPage> {
                                 ? FontWeight.w600
                                 : FontWeight.w400,
                             color: isSelected
-                                ? const Color(0xFFB388FF)
+                                ? const Color(0xFF44403B)
                                 : Colors.grey,
                           ),
                           maxLines: 1,

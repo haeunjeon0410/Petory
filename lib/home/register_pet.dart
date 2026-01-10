@@ -100,204 +100,219 @@ class _PetRegistrationDialogState extends State<PetRegistrationDialog> {
 
           // 2. 입력 폼 (스크롤 가능)
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // (1) 사진 업로드
-                  Center(
-                    child: GestureDetector(
-                      onTap: _pickImage,
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F2ED), // 크림색 배경
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFFF1F2ED),
-                                width: 2,
+            child: NotificationListener<OverscrollIndicatorNotification>(
+              onNotification: (OverscrollIndicatorNotification overscroll) {
+                overscroll.disallowIndicator(); // 여기서 시각적 효과를 끕니다.
+                return true;
+              },
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // (1) 사진 업로드
+                    Center(
+                      child: GestureDetector(
+                        onTap: _pickImage,
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F2ED), // 크림색 배경
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFF1F2ED),
+                                  width: 2,
+                                ),
+                                image: _selectedImage != null
+                                    ? DecorationImage(
+                                        image: FileImage(_selectedImage!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
                               ),
-                              image: _selectedImage != null
-                                  ? DecorationImage(
-                                      image: FileImage(_selectedImage!),
-                                      fit: BoxFit.cover,
+                              child: _selectedImage == null
+                                  ? const Icon(
+                                      Icons.camera_alt,
+                                      color: Color(0xFF44403B),
+                                      size: 40,
                                     )
                                   : null,
                             ),
-                            child: _selectedImage == null
-                                ? const Icon(
-                                    Icons.camera_alt,
-                                    color: Color(0xFF44403B),
-                                    size: 40,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _selectedImage == null ? "사진 등록" : "사진 변경",
-                            style: const TextStyle(
-                              color: Color(0xFF44403B),
-                              fontSize: 13,
+                            const SizedBox(height: 8),
+                            Text(
+                              _selectedImage == null ? "사진 등록" : "사진 변경",
+                              style: const TextStyle(
+                                color: Color(0xFF44403B),
+                                fontSize: 13,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 30),
+                    const SizedBox(height: 30),
 
-                  // (2) 강아지/고양이 선택 (드롭다운)
-                  _buildLabel("종류 *"),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F2ED),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFF1F2ED)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        dropdownColor: const Color(0xFFF1F2ED),
+                    // (2) 강아지/고양이 선택 (드롭다운)
+                    _buildLabel("종류 *"),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F2ED),
                         borderRadius: BorderRadius.circular(12),
-                        value: _petType,
-                        isExpanded: true,
-                        icon: const Icon(
-                          Icons.arrow_drop_down,
-                          color: Color(0xFF44403B),
+                        border: Border.all(color: const Color(0xFFF1F2ED)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          dropdownColor: const Color(0xFFF1F2ED),
+                          borderRadius: BorderRadius.circular(12),
+                          value: _petType,
+                          isExpanded: true,
+                          icon: const Icon(
+                            Icons.arrow_drop_down,
+                            color: Color(0xFF44403B),
+                          ),
+                          items: ["강아지", "고양이"].map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(
+                                value,
+                                style: const TextStyle(color: Colors.black87),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            setState(() {
+                              _petType = newValue!;
+                            });
+                          },
                         ),
-                        items: ["강아지", "고양이"].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(
-                              value,
-                              style: const TextStyle(color: Colors.black87),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (newValue) {
-                          setState(() {
-                            _petType = newValue!;
-                          });
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // (3) 이름
+                    _buildLabel("이름 *"),
+                    _buildTextField(_nameController, "예: 초코"),
+                    const SizedBox(height: 20),
+
+                    // (4) 품종
+                    _buildLabel("품종"),
+                    _buildTextField(_speciesController, "예: 골든 리트리버"),
+                    const SizedBox(height: 20),
+
+                    // (5) 나이
+                    _buildLabel("나이 (살) *"),
+                    _buildTextField(_ageController, "예: 3", isNumber: true),
+                    const SizedBox(height: 20),
+
+                    // (6) 성별
+                    _buildLabel("성별 *"),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSelectButton(
+                            text: "수컷 ♂",
+                            isSelected: _gender == 'male',
+                            onTap: () => setState(() => _gender = 'male'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSelectButton(
+                            text: "암컷 ♀",
+                            isSelected: _gender == 'female',
+                            onTap: () => setState(() => _gender = 'female'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // (7) 키
+                    _buildLabel("키 (cm)"),
+                    _buildTextField(
+                      _heightController,
+                      "예: 60.5",
+                      isNumber: true,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // (8) 체중
+                    _buildLabel("체중 (kg) *"),
+                    _buildTextField(
+                      _weightController,
+                      "예: 32.4",
+                      isNumber: true,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // (9) 중성화 여부
+                    _buildLabel("중성화 여부"),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSelectButton(
+                            text: "O",
+                            isSelected: _isNeutered == true,
+                            onTap: () => setState(() => _isNeutered = true),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSelectButton(
+                            text: "X",
+                            isSelected: _isNeutered == false,
+                            onTap: () => setState(() => _isNeutered = false),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+
+                    // 등록 완료 버튼
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_nameController.text.isNotEmpty) {
+                            Navigator.pop(context, {
+                              "name": _nameController.text,
+                              "type": _petType,
+                              "species": _speciesController.text,
+                              "age": _ageController.text,
+                              "height": _heightController.text,
+                              "weight": _weightController.text,
+                              "gender": _gender,
+                              "isNeutered": _isNeutered,
+                              "image": _selectedImage,
+                            });
+                          }
                         },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // (3) 이름
-                  _buildLabel("이름 *"),
-                  _buildTextField(_nameController, "예: 초코"),
-                  const SizedBox(height: 20),
-
-                  // (4) 품종
-                  _buildLabel("품종"),
-                  _buildTextField(_speciesController, "예: 골든 리트리버"),
-                  const SizedBox(height: 20),
-
-                  // (5) 나이
-                  _buildLabel("나이 (살) *"),
-                  _buildTextField(_ageController, "예: 3", isNumber: true),
-                  const SizedBox(height: 20),
-
-                  // (6) 성별
-                  _buildLabel("성별 *"),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSelectButton(
-                          text: "수컷 ♂",
-                          isSelected: _gender == 'male',
-                          onTap: () => setState(() => _gender = 'male'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF44403B), // 갈색 버튼
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildSelectButton(
-                          text: "암컷 ♀",
-                          isSelected: _gender == 'female',
-                          onTap: () => setState(() => _gender = 'female'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // (7) 키
-                  _buildLabel("키 (cm)"),
-                  _buildTextField(_heightController, "예: 60.5", isNumber: true),
-                  const SizedBox(height: 20),
-
-                  // (8) 체중
-                  _buildLabel("체중 (kg) *"),
-                  _buildTextField(_weightController, "예: 32.4", isNumber: true),
-                  const SizedBox(height: 20),
-
-                  // (9) 중성화 여부
-                  _buildLabel("중성화 여부"),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSelectButton(
-                          text: "O",
-                          isSelected: _isNeutered == true,
-                          onTap: () => setState(() => _isNeutered = true),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildSelectButton(
-                          text: "X",
-                          isSelected: _isNeutered == false,
-                          onTap: () => setState(() => _isNeutered = false),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
-
-                  // 등록 완료 버튼
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_nameController.text.isNotEmpty) {
-                          Navigator.pop(context, {
-                            "name": _nameController.text,
-                            "type": _petType,
-                            "species": _speciesController.text,
-                            "age": _ageController.text,
-                            "height": _heightController.text,
-                            "weight": _weightController.text,
-                            "gender": _gender,
-                            "isNeutered": _isNeutered,
-                            "image": _selectedImage,
-                          });
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF44403B), // 갈색 버튼
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        isEditing ? "수정완료" : "등록하기",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        child: Text(
+                          isEditing ? "수정완료" : "등록하기",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),

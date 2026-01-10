@@ -116,145 +116,159 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
             child: Column(
               children: [
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            // 아이콘 선택
-                            SizedBox(
-                              width: 60,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel("아이콘"),
-                                  GestureDetector(
-                                    onTap: _toggleEmojiPicker,
-                                    child: Container(
-                                      height: 56,
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: Color(0xFFF1F2ED),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: isEmojiPickerVisible
-                                              ? const Color(0xFF44403B)
-                                              : const Color(0xFFF1F2ED),
-                                          width: isEmojiPickerVisible
-                                              ? 2.0
-                                              : 1.0,
+                  child: NotificationListener<OverscrollIndicatorNotification>(
+                    onNotification:
+                        (OverscrollIndicatorNotification overscroll) {
+                          overscroll.disallowIndicator();
+                          return true;
+                        },
+                    child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              // 아이콘 선택
+                              SizedBox(
+                                width: 60,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel("아이콘"),
+                                    GestureDetector(
+                                      onTap: _toggleEmojiPicker,
+                                      child: Container(
+                                        height: 56,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFFF1F2ED),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: isEmojiPickerVisible
+                                                ? const Color(0xFF44403B)
+                                                : const Color(0xFFF1F2ED),
+                                            width: isEmojiPickerVisible
+                                                ? 2.0
+                                                : 1.0,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          selectedEmoji,
+                                          style: const TextStyle(fontSize: 28),
                                         ),
                                       ),
-                                      child: Text(
-                                        selectedEmoji,
-                                        style: const TextStyle(fontSize: 28),
-                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            // 일정 이름
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel("일정 이름 *"),
-                                  _buildTextField(
-                                    titleController,
-                                    "예: 아침 산책",
-                                    onTap: _hideEmojiPicker,
-                                  ),
-                                ],
+                              const SizedBox(width: 12),
+                              // 일정 이름
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel("일정 이름 *"),
+                                    _buildTextField(
+                                      titleController,
+                                      "예: 아침 산책",
+                                      onTap: _hideEmojiPicker,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // [시간 입력 섹션]
-                        _buildLabel("시간 *"),
-
-                        // [핵심] 시간 선택기 (항상 보임)
-                        Container(
-                          height: 100,
-                          margin: const EdgeInsets.only(top: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F2ED), // [수정] 크림색 배경
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFF1F2ED)),
+                            ],
                           ),
-                          // CupertinoDatePicker는 기본적으로 투명 배경이므로
-                          // Container 색상을 따라갑니다.
-                          child: CupertinoDatePicker(
-                            mode: CupertinoDatePickerMode.time,
-                            initialDateTime: _selectedTime,
-                            onDateTimeChanged: _onTimeChanged,
-                            use24hFormat: false,
-                          ),
-                        ),
+                          const SizedBox(height: 24),
 
-                        const SizedBox(height: 24),
+                          // [시간 입력 섹션]
+                          _buildLabel("시간 *"),
 
-                        _buildLabel("메모"),
-                        _buildTextField(
-                          memoController,
-                          "추가 메모 (선택)",
-                          maxLines: 4,
-                          onTap: _hideEmojiPicker,
-                        ),
-                        const SizedBox(height: 40),
-
-                        // 저장 버튼
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (titleController.text.isNotEmpty &&
-                                  timeController.text.isNotEmpty) {
-                                Navigator.pop(context, {
-                                  "title": titleController.text,
-                                  "time": timeController.text,
-                                  "memo": memoController.text,
-                                  "icon": selectedEmoji,
-                                  "isDone": widget.existingItem != null
-                                      ? widget.existingItem!['isDone']
-                                      : false,
-                                });
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                          // [핵심] 시간 선택기 (항상 보임)
+                          Container(
+                            height: 100,
+                            margin: const EdgeInsets.only(top: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F2ED), // [수정] 크림색 배경
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFF1F2ED),
                               ),
-                              backgroundColor: Colors.transparent,
                             ),
-                            child: Ink(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF44403B), // 갈색 버튼
-                                borderRadius: BorderRadius.circular(16),
+                            // CupertinoDatePicker는 기본적으로 투명 배경이므로
+                            // Container 색상을 따라갑니다.
+                            child: CupertinoDatePicker(
+                              mode: CupertinoDatePickerMode.time,
+                              initialDateTime: _selectedTime,
+                              onDateTimeChanged: _onTimeChanged,
+                              use24hFormat: false,
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          _buildLabel("메모"),
+                          _buildTextField(
+                            memoController,
+                            "추가 메모 (선택)",
+                            maxLines: 4,
+                            onTap: _hideEmojiPicker,
+                          ),
+                          const SizedBox(height: 40),
+
+                          // 저장 버튼
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (titleController.text.isNotEmpty &&
+                                    timeController.text.isNotEmpty) {
+                                  Navigator.pop(context, {
+                                    "title": titleController.text,
+                                    "time": timeController.text,
+                                    "memo": memoController.text,
+                                    "icon": selectedEmoji,
+                                    "isDone": widget.existingItem != null
+                                        ? widget.existingItem!['isDone']
+                                        : false,
+                                  });
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                backgroundColor: Colors.transparent,
                               ),
-                              child: Container(
-                                alignment: Alignment.center,
-                                child: Text(
-                                  widget.existingItem != null ? "수정하기" : "추가하기",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF44403B), // 갈색 버튼
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    widget.existingItem != null
+                                        ? "수정하기"
+                                        : "추가하기",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
