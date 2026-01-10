@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 
-// [역할] 체크리스트 아이템 하나를 그리는 UI
-// 로직은(클릭 시 동작 등) 부모(HomePage)에게 함수로 전달받아서 실행함 (Callback 방식)
 class CheckListItem extends StatelessWidget {
   final Map<String, dynamic> item;
-  final VoidCallback onToggle; // 체크박스 눌렀을 때
-  final VoidCallback onTap; // 글씨 눌렀을 때 (상세보기)
-  final VoidCallback onMore; // 점 세개 눌렀을 때
+  final VoidCallback onToggle;
+  final VoidCallback onTap;
+  // [수정] onMore 대신 onEdit, onDelete로 변경
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const CheckListItem({
     super.key,
     required this.item,
     required this.onToggle,
     required this.onTap,
-    required this.onMore,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
@@ -24,7 +25,9 @@ class CheckListItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: isDone ? const Color(0xFFE8F5E9) : Colors.white,
+        color: isDone
+            ? const Color.fromARGB(255, 217, 215, 210) // 완료 후 색상
+            : Colors.white, // 완료 전 색상
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDone ? Colors.transparent : Colors.grey.withOpacity(0.1),
@@ -48,7 +51,7 @@ class CheckListItem extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDone ? const Color(0xFF4CAF50) : Colors.white,
+                color: isDone ? const Color(0xFF44403B) : Colors.white,
                 border: Border.all(
                   color: isDone ? Colors.transparent : const Color(0xFFE0E0E0),
                   width: 2,
@@ -61,7 +64,7 @@ class CheckListItem extends StatelessWidget {
           ),
           const SizedBox(width: 14),
 
-          // 2. 내용 (클릭 시 상세보기)
+          // 2. 내용
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -74,8 +77,8 @@ class CheckListItem extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: isDone
-                          ? const Color(0xFF4CAF50).withOpacity(0.2)
-                          : const Color(0xFFF3E5F5),
+                          ? const Color(0xFF44403B).withOpacity(0.2)
+                          : const Color(0xFFF1F2ED),
                       shape: BoxShape.circle,
                     ),
                     child: iconData is String
@@ -83,9 +86,7 @@ class CheckListItem extends StatelessWidget {
                         : Icon(
                             iconData ?? Icons.check_circle_outline,
                             size: 20,
-                            color: isDone
-                                ? const Color(0xFF2E7D32)
-                                : const Color(0xFF9C27B0),
+                            color: null,
                           ),
                   ),
                   const SizedBox(width: 14),
@@ -98,8 +99,11 @@ class CheckListItem extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                            decoration: isDone ? TextDecoration.none : null,
+                            color: isDone ? Colors.grey : Colors.black87,
+                            decoration: isDone
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none,
+                            decorationColor: Colors.grey,
                           ),
                         ),
                         if (item['time'] != null &&
@@ -121,10 +125,47 @@ class CheckListItem extends StatelessWidget {
             ),
           ),
 
-          // 3. 더보기 (수정/삭제)
-          GestureDetector(
-            onTap: onMore,
-            child: Icon(Icons.more_vert, color: Colors.grey[400], size: 20),
+          // [핵심 변경] 3. 팝업 메뉴 버튼 (점 세 개)
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert,
+              color: const Color.fromARGB(255, 0, 0, 0),
+              size: 20,
+            ),
+            color: Colors.white,
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12), // 메뉴 자체도 둥글게
+            ),
+            onSelected: (String value) {
+              if (value == 'edit') {
+                onEdit();
+              } else if (value == 'delete') {
+                onDelete();
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, color: Colors.blue, size: 20),
+                    SizedBox(width: 10),
+                    Text('수정', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, color: Colors.red, size: 20),
+                    SizedBox(width: 10),
+                    Text('삭제', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'home/home.dart';
 import 'record.dart'; // 파일이 없다면 주석 처리
 import 'nutrition.dart'; // 파일이 없다면 주석 처리
@@ -12,7 +13,23 @@ void main() {
 class PetoryApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(debugShowCheckedModeBanner: false, home: MainPage());
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Petory',
+
+      // [여기부터 추가] 한국어 설정을 위한 코드입니다.
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ko', 'KR'), // 한국어 지원 설정
+      ],
+      locale: const Locale('ko'), // 앱 언어를 강제로 한국어로 고정
+      // [여기까지 추가]
+      home: MainPage(),
+    );
   }
 }
 
@@ -46,7 +63,7 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       // [핵심 변경 1] 몸통(Body) 전체의 배경색을 '연한 보라색'으로 설정
       // 이렇게 하면 콘텐츠가 짧아도 화면 중간이 보라색으로 꽉 찹니다.
-      backgroundColor: const Color(0xFFFDF7FF),
+      backgroundColor: const Color(0xFFF1F2ED),
 
       appBar: AppBar(
         elevation: 0,

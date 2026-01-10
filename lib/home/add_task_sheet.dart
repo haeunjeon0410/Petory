@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 
 class AddTaskSheet extends StatefulWidget {
@@ -16,38 +17,32 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   final TextEditingController memoController = TextEditingController();
 
   String selectedEmoji = "🐾";
+
+  // [수정] 시간 선택창은 항상 보이므로 관련 상태 변수 삭제
   bool isEmojiPickerVisible = false;
+  DateTime _selectedTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+
+    // [수정] 한국 시간(KST) 보정 로직
+    DateTime now = DateTime.now();
+
+    if (now.timeZoneOffset.inHours == 0) {
+      now = now.add(const Duration(hours: 9));
+    }
+
+    _selectedTime = now;
+
     if (widget.existingItem != null) {
+      // (기존 데이터 불러오는 부분은 그대로 유지)
       titleController.text = widget.existingItem!['title'];
       timeController.text = widget.existingItem!['time'];
       memoController.text = widget.existingItem!['memo'] ?? "";
       if (widget.existingItem!['icon'] is String) {
         selectedEmoji = widget.existingItem!['icon'];
       }
-    }
-  }
-
-  // [수정된 부분] 시간 선택 시 키보드 입력 모드로 열기
-  Future<void> _selectTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-      // [핵심] 이 옵션을 추가하면 키보드 입력창이 기본으로 뜹니다.
-      initialEntryMode: TimePickerEntryMode.input,
-    );
-
-    if (picked != null && mounted) {
-      final localizations = MaterialLocalizations.of(context);
-      // "오전 8:00" 같은 형식으로 변환
-      String formattedTime = localizations.formatTimeOfDay(
-        picked,
-        alwaysUse24HourFormat: false,
-      );
-      timeController.text = formattedTime;
     }
   }
 
@@ -66,30 +61,36 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     }
   }
 
+  void _onTimeChanged(DateTime newDate) {
+    setState(() {
+      _selectedTime = newDate;
+      final timeOfDay = TimeOfDay.fromDateTime(newDate);
+      final localizations = MaterialLocalizations.of(context);
+      final formattedTime = localizations.formatTimeOfDay(
+        timeOfDay,
+        alwaysUse24HourFormat: false,
+      );
+      timeController.text = formattedTime;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
+      // 팝업 높이를 조금 더 넉넉하게 70%로 설정
+      height: MediaQuery.of(context).size.height * 0.70,
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.circular(20),
       ),
+      clipBehavior: Clip.hardEdge,
       child: Column(
         children: [
           // 1. 헤더
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFE040FB), Color(0xFF9C27B0)],
-              ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
+              color: Color(0xFF44403B), // 짙은 갈색 헤더
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -136,12 +137,12 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                                       height: 56,
                                       alignment: Alignment.center,
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: Color(0xFFF1F2ED),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
                                           color: isEmojiPickerVisible
-                                              ? const Color(0xFF9C27B0)
-                                              : const Color(0xFFE1BEE7),
+                                              ? const Color(0xFF44403B)
+                                              : const Color(0xFFF1F2ED),
                                           width: isEmojiPickerVisible
                                               ? 2.0
                                               : 1.0,
@@ -157,7 +158,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // 제목 입력
+                            // 일정 이름
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,23 +176,28 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                         ),
                         const SizedBox(height: 24),
 
+                        // [시간 입력 섹션]
                         _buildLabel("시간 *"),
-                        GestureDetector(
-                          onTap: () {
-                            _hideEmojiPicker();
-                            _selectTime();
-                          },
-                          child: AbsorbPointer(
-                            child: _buildTextField(
-                              timeController,
-                              "--:--",
-                              suffixIcon: const Icon(
-                                Icons.access_time,
-                                color: Color(0xFFAB47BC),
-                              ),
-                            ),
+
+                        // [핵심] 시간 선택기 (항상 보임)
+                        Container(
+                          height: 100,
+                          margin: const EdgeInsets.only(top: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F2ED), // [수정] 크림색 배경
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFF1F2ED)),
+                          ),
+                          // CupertinoDatePicker는 기본적으로 투명 배경이므로
+                          // Container 색상을 따라갑니다.
+                          child: CupertinoDatePicker(
+                            mode: CupertinoDatePickerMode.time,
+                            initialDateTime: _selectedTime,
+                            onDateTimeChanged: _onTimeChanged,
+                            use24hFormat: false,
                           ),
                         ),
+
                         const SizedBox(height: 24),
 
                         _buildLabel("메모"),
@@ -203,7 +209,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                         ),
                         const SizedBox(height: 40),
 
-                        // 저장/추가 버튼
+                        // 저장 버튼
                         SizedBox(
                           width: double.infinity,
                           height: 56,
@@ -231,12 +237,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                             ),
                             child: Ink(
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFE040FB),
-                                    Color(0xFF9C27B0),
-                                  ],
-                                ),
+                                color: const Color(0xFF44403B), // 갈색 버튼
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Container(
@@ -302,7 +303,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
             if (text.contains('*'))
               const TextSpan(
                 text: ' *',
-                style: TextStyle(color: Colors.deepPurple),
+                style: TextStyle(color: Colors.red),
               ),
           ],
         ),
@@ -333,6 +334,8 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         controller: controller,
         onTap: onTap,
         maxLines: maxLines,
+        // 읽기 전용으로 설정하면 키보드가 뜨지 않습니다 (시간 필드 등에 유용)
+        readOnly: onTap == null ? true : false,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
@@ -342,13 +345,16 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE1BEE7)),
+            borderSide: const BorderSide(color: Color(0xFFF1F2ED)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF9C27B0), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF44403B), width: 1.5),
           ),
-          fillColor: const Color(0xFFFDF7FF),
+
+          // [수정] 입력칸 배경색: 크림색(#F1F2ED) 적용
+          fillColor: const Color(0xFFF1F2ED),
+
           filled: true,
           suffixIcon: suffixIcon,
         ),

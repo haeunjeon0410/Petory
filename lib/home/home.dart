@@ -36,6 +36,12 @@ class _HomePageState extends State<HomePage> {
           "icon": Icons.pets,
           "isDone": true,
         },
+        {
+          "title": "점심 산책",
+          "time": "오후 1:00",
+          "icon": Icons.pets,
+          "isDone": false,
+        },
       ],
     };
     petProfiles = {
@@ -53,18 +59,25 @@ class _HomePageState extends State<HomePage> {
 
   // --- 2. 로직 함수들 ---
 
-  // 일정 추가/수정 모달 띄우기 (코드가 훨씬 짧아짐!)
   void _openTaskSheet(
     String petName, {
     int? editIndex,
     Map<String, dynamic>? existingItem,
   }) async {
-    // 분리한 AddTaskSheet 위젯을 띄우고, 결과를 기다림(await)
-    final result = await showModalBottomSheet(
+    final result = await showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddTaskSheet(existingItem: existingItem),
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          // [핵심] 다이얼로그 배경 모양을 둥글게 설정
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: AddTaskSheet(existingItem: existingItem),
+        );
+      },
     );
 
     // 결과가 돌아오면 데이터 업데이트
@@ -84,179 +97,157 @@ class _HomePageState extends State<HomePage> {
     bool isDone = item['isDone'];
     var iconData = item['icon'];
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20), // 가로 여백
+          child: Container(
+            // [수정] 팝업창 디자인 (모서리 전체 둥글게)
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20), // 전체 둥글게
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 헤더 (간단해서 여기 둠)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 15,
-                ),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFE040FB), Color(0xFF9C27B0)],
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // 내용만큼만 높이 차지
+              children: [
+                // 헤더 (모서리 둥글기 수정)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
                   ),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF44403B),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
                   ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "일정 상세",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.close, color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(30),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          alignment: Alignment.center,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF3E5F5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: iconData is String
-                              ? Text(
-                                  iconData,
-                                  style: const TextStyle(fontSize: 30),
-                                )
-                              : Icon(
-                                  iconData ?? Icons.check_circle_outline,
-                                  size: 30,
-                                  color: const Color(0xFF9C27B0),
-                                ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item['title'],
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                item['time'],
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 30),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isDone
-                            ? const Color(0xFFE8F5E9)
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        isDone ? "완료됨" : "미완료",
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "일정 상세",
                         style: TextStyle(
-                          fontSize: 16,
+                          color: Colors.white,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isDone ? Colors.green[700] : Colors.grey[600],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(Icons.close, color: Colors.white),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                // 내용 본문
+                Padding(
+                  padding: const EdgeInsets.all(30),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF1F2ED),
+                              shape: BoxShape.circle,
+                            ),
+                            child: iconData is String
+                                ? Text(
+                                    iconData,
+                                    style: const TextStyle(fontSize: 30),
+                                  )
+                                : Icon(
+                                    iconData ?? Icons.check_circle_outline,
+                                    size: 30,
+                                    color: const Color(0xFF44403B),
+                                  ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'],
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  item['time'],
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 30),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDone
+                              ? const Color(0xFFE8F5E9)
+                              : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          isDone ? "완료됨" : "미완료",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDone
+                                ? Colors.green[700]
+                                : Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  // 더보기 메뉴 (수정/삭제)
-  void _showMoreOptionSheet(
-    String petName,
-    int index,
-    Map<String, dynamic> item,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.edit, color: Colors.blue),
-                title: const Text("수정"),
-                onTap: () {
-                  Navigator.pop(context);
-                  _openTaskSheet(
-                    petName,
-                    editIndex: index,
-                    existingItem: item,
-                  ); // 수정 모드로 열기
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text("삭제"),
-                onTap: () {
-                  setState(() {
-                    petChecklists[petName]!.removeAt(index);
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  int _parseTimeToMinutes(String timeStr) {
+    try {
+      if (timeStr.isEmpty || timeStr == "--:--") return 99999;
+      final parts = timeStr.split(' ');
+      if (parts.length < 2) return 99999;
+
+      final ampm = parts[0];
+      final timeParts = parts[1].split(':');
+
+      int hour = int.parse(timeParts[0]);
+      int minute = int.parse(timeParts[1]);
+
+      if (ampm == "오후" && hour != 12) hour += 12;
+      if (ampm == "오전" && hour == 12) hour = 0;
+
+      return hour * 60 + minute;
+    } catch (e) {
+      return 99999;
+    }
   }
 
   // --- 3. 화면 빌드 ---
@@ -267,8 +258,15 @@ class _HomePageState extends State<HomePage> {
         petChecklists[currentPetName] ?? [];
     Map<String, dynamic> currentProfile = petProfiles[currentPetName] ?? {};
 
+    // [1] 리스트를 시간 순서대로 정렬
+    currentCheckList.sort((a, b) {
+      int timeA = _parseTimeToMinutes(a['time'] ?? "");
+      int timeB = _parseTimeToMinutes(b['time'] ?? "");
+      return timeA.compareTo(timeB);
+    });
+
     return Container(
-      color: const Color(0xFFFDF7FF),
+      color: const Color(0xFFF1F2ED),
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         child: Column(
@@ -311,16 +309,17 @@ class _HomePageState extends State<HomePage> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF6A1B9A),
+                    color: Color(0xFF44403B),
                   ),
                 ),
                 GestureDetector(
+                  // [2] 추가 버튼: 중앙 팝업(_openTaskSheet)으로 연결
                   onTap: () => _openTaskSheet(currentPetName),
                   child: Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6A1B9A),
+                      color: const Color(0xFF44403B),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Icon(Icons.add, color: Colors.white, size: 20),
@@ -330,7 +329,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 15),
 
-            // 체크리스트 (분리된 위젯 사용)
+            // 체크리스트 아이템들
             currentCheckList.isEmpty
                 ? _buildEmptyState()
                 : ListView.separated(
@@ -342,18 +341,33 @@ class _HomePageState extends State<HomePage> {
                     itemBuilder: (context, index) {
                       return CheckListItem(
                         item: currentCheckList[index],
+
+                        // [3] 완료/미완료 토글
                         onToggle: () {
                           setState(() {
                             currentCheckList[index]['isDone'] =
                                 !currentCheckList[index]['isDone'];
                           });
                         },
+
+                        // [4] 상세 보기 (글씨 클릭)
                         onTap: () => _showDetailSheet(currentCheckList[index]),
-                        onMore: () => _showMoreOptionSheet(
-                          currentPetName,
-                          index,
-                          currentCheckList[index],
-                        ),
+
+                        // [5] 핵심 수정: onMore 대신 onEdit/onDelete 연결
+                        onEdit: () {
+                          // 수정 팝업 열기
+                          _openTaskSheet(
+                            currentPetName,
+                            editIndex: index,
+                            existingItem: currentCheckList[index],
+                          );
+                        },
+                        onDelete: () {
+                          // 삭제 처리
+                          setState(() {
+                            petChecklists[currentPetName]!.removeAt(index);
+                          });
+                        },
                       );
                     },
                   ),
@@ -367,14 +381,17 @@ class _HomePageState extends State<HomePage> {
   // --- 이하 UI Helper (프로필 카드 등 간단한 것은 여기에 둠) ---
 
   Widget _buildProfileCard(String petName, Map<String, dynamic> profileData) {
-    // (기존 코드와 동일, 생략 없이 사용하세요)
     return GestureDetector(
       onTap: () async {
-        final updatedData = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                PetRegistrationPage(existingData: profileData),
+        final updatedData = await showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: PetRegistrationDialog(existingData: profileData),
           ),
         );
         if (updatedData != null) {
@@ -426,14 +443,14 @@ class _HomePageState extends State<HomePage> {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF4A148C),
+                          color: Color.fromARGB(255, 0, 0, 0),
                         ),
                       ),
                       const SizedBox(width: 6),
                       if (profileData['gender'] == 'male')
                         const Icon(Icons.male, color: Colors.blue, size: 20)
                       else if (profileData['gender'] == 'female')
-                        const Icon(Icons.female, color: Colors.pink, size: 20),
+                        const Icon(Icons.female, color: Colors.red, size: 20),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -446,12 +463,12 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       _buildTag(
                         "${profileData['height'] ?? '?'} cm",
-                        const Color(0xFFBBDEFB),
+                        Colors.blue,
                       ),
                       const SizedBox(width: 8),
                       _buildTag(
                         "${profileData['weight'] ?? '?'} kg",
-                        const Color(0xFFF8BBD0),
+                        Colors.red,
                       ),
                     ],
                   ),
@@ -466,13 +483,22 @@ class _HomePageState extends State<HomePage> {
 
   // 나머지 버튼, 태그, 빈 상태 위젯 등은 코드가 짧아서 Home에 두어도 됩니다.
   Widget _buildAddPetButton() {
-    /* ... 기존 코드 ... */
     return GestureDetector(
       onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const PetRegistrationPage()),
+        // [핵심 변경] push -> showDialog
+        final result = await showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+            // 모서리 둥글게
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const PetRegistrationDialog(), // (이름 변경 예정)
+          ),
         );
+
         if (result != null && result is Map<String, dynamic>) {
           String newName = result['name'];
           setState(() {
@@ -487,7 +513,7 @@ class _HomePageState extends State<HomePage> {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: const Color(0xFF6A1B9A),
+          color: const Color(0xFF44403B),
           borderRadius: BorderRadius.circular(18),
         ),
         child: const Icon(Icons.add, color: Colors.white, size: 20),
@@ -500,21 +526,16 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        gradient: isSelected
-            ? const LinearGradient(
-                colors: [Color(0xFFE040FB), Color(0xFF6A1B9A)],
-              )
-            : null,
-        color: isSelected ? null : Colors.transparent,
+        color: isSelected ? const Color(0xFF44403B) : Color(0xFFF1F2ED),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isSelected ? Colors.transparent : const Color(0xFFD1C4E9),
+          color: isSelected ? Colors.transparent : const Color(0xFF44403B),
           width: 1.5,
         ),
         boxShadow: [
           if (isSelected)
             BoxShadow(
-              color: const Color(0xFFE040FB).withOpacity(0.3),
+              color: const Color(0xFF44403B).withOpacity(0.3),
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -523,7 +544,7 @@ class _HomePageState extends State<HomePage> {
       child: Text(
         name,
         style: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF9C27B0),
+          color: isSelected ? Colors.white : const Color(0xFF44403B),
           fontWeight: FontWeight.bold,
           fontSize: 15,
         ),
