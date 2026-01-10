@@ -148,6 +148,23 @@ class _CalendarSectionState extends State<CalendarSection> {
                                     ],
                                   ),
                                 ),
+                                // 수정 버튼 추가
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined, color: Color(0xFF605A55), size: 20),
+                                  onPressed: () async {
+                                    final editedResult = await showDialog<record.Schedule>(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (_) => ScheduleDetailPage(date: day, schedule: s),
+                                    );
+                                    if (editedResult != null) {
+                                      setModalState(() {
+                                        record.schedules[key]![index] = editedResult;
+                                      });
+                                      setState(() {});
+                                    }
+                                  },
+                                ),
                                 IconButton(
                                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
                                   onPressed: () {
