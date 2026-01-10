@@ -22,30 +22,56 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: const Color(0xFFF1F2ED),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ColorPicker(
-              pickerColor: _color,
-              onColorChanged: (c) => _color = c,
-              pickerAreaHeightPercent: 0.6,
-              enableAlpha: false,
-              displayThumbColor: true,
-              showLabel: false,
-              paletteType: PaletteType.hsv,
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context, _color),
-                child: const Text('완료'),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 42),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ColorPicker(
+                pickerColor: _color,
+                onColorChanged: (c) => setState(() => _color = c),
+                pickerAreaHeightPercent: 0.8,
+                enableAlpha: false,
+                displayThumbColor: true,
+                showLabel: false,
+                paletteType: PaletteType.hsv,
               ),
-            ),
-          ],
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: SizedBox(
+                    width: 80,
+                    height: 43,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF44403B),
+                        elevation: 0,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context, _color),
+                      child: const Text(
+                        '완료',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

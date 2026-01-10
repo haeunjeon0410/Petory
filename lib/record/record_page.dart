@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'schedule/schedule_detail_page.dart';
+import 'record_data.dart' as record;
 
 class RecordPage extends StatefulWidget {
   const RecordPage({super.key});
@@ -14,126 +15,187 @@ class _RecordPageState extends State<RecordPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
-  final List<String> _images = [
-    'assets/images/1.jpg',
-    'assets/images/2.jpg',
-    'assets/images/3.jpg',
-    'assets/images/4.jpg',
-    'assets/images/5.jpg',
-    'assets/images/6.jpg',
-  ];
+  final List<String> _images = ['assets/images/1.jpg', 'assets/images/2.jpg', 'assets/images/3.jpg', 'assets/images/4.jpg', 'assets/images/5.jpg', 'assets/images/6.jpg'];
+
+  Widget _buildDayCell(DateTime day, {Color? textColor}) {
+    Color dayColor = Colors.black;
+    if (day.weekday == DateTime.sunday) dayColor = Colors.red;
+    if (day.weekday == DateTime.saturday) dayColor = Colors.blue;
+    if (textColor != null) dayColor = textColor;
+
+    bool isToday = isSameDay(day, DateTime.now());
+    final key = record.normalizeDate(day);
+    final daySchedules = record.schedules[key] ?? [];
+
+    return Container(
+      alignment: Alignment.topCenter,
+      child: Column(
+        children: [
+          const SizedBox(height: 4),
+          Container(
+            height: 28, width: 28, alignment: Alignment.center,
+            decoration: isToday ? BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFF1F2ED), width: 4.0)) : null,
+            child: Text('${day.day}', style: TextStyle(fontSize: 15, color: dayColor)),
+          ),
+          const SizedBox(height: 2),
+          ...daySchedules.take(2).map((s) => Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Container(width: 6, height: 6, decoration: BoxDecoration(color: s.color, shape: BoxShape.circle)),
+            const SizedBox(width: 3),
+            Flexible(child: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Color(0xFF44403B)))),
+          ])),
+        ],
+      ),
+    );
+  }
+
+  void _showScheduleListDialog(BuildContext context, DateTime day) {
+    final key = record.normalizeDate(day);
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final daySchedules = record.schedules[key] ?? [];
+          return Dialog(
+            backgroundColor: const Color(0xFFF1F2ED),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            child: Container(
+              height: 480, padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('${day.day} ${DateFormat('EEEE', 'ko_KR').format(day)}',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF44403B))),
+                      const Spacer(),
+                      IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(context)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: daySchedules.isEmpty
+                        ? const Center(child: Text('등록된 일정이 없습니다.'))
+                        : ListView.builder(
+                      itemCount: daySchedules.length,
+                      itemBuilder: (context, index) {
+                        final s = daySchedules[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                          child: Row(
+                            children: [
+                              Container(width: 4, height: 32, decoration: BoxDecoration(color: s.color, borderRadius: BorderRadius.circular(2))),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(s.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    if (s.content.isNotEmpty) Text(s.content, style: const TextStyle(fontSize: 13, color: Color(0xFF605A55))),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                onPressed: () {
+                                  setModalState(() => record.schedules[key]!.removeAt(index));
+                                  setState(() {});
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF44403B), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), padding: const EdgeInsets.symmetric(vertical: 14)),
+                      onPressed: () async {
+                        final result = await showDialog<record.Schedule>(context: context, barrierDismissible: false, builder: (_) => ScheduleDetailPage(date: day));
+                        if (result != null) {
+                          setModalState(() {
+                            record.schedules.putIfAbsent(key, () => []);
+                            record.schedules[key]!.add(result);
+                          });
+                          setState(() {});
+                        }
+                      },
+                      child: const Text('일정 추가', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6FA),
+      backgroundColor: const Color(0xFFF1F2ED),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
               _buildCalendar(),
               const SizedBox(height: 24),
-              _buildPhotoGrid(),
+              _buildPhotoGrid()
             ],
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFFB388FF),
-        onPressed: () {},
-        child: const Icon(Icons.add_a_photo, color: Colors.white),
       ),
     );
   }
 
   Widget _buildCalendar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
       child: Column(
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () {
-                  setState(() {
-                    _focusedDay = DateTime(
-                      _focusedDay.year,
-                      _focusedDay.month - 1,
-                    );
-                  });
-                },
+                icon: const Icon(Icons.chevron_left, color: Color(0xFF44403B)),
+                onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1)),
               ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    DateFormat('yyyy년 M월').format(_focusedDay),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF8B5CF6),
-                    ),
-                  ),
-                ),
+              Text(
+                DateFormat('yyyy년 M월').format(_focusedDay),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF44403B)),
               ),
               IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () {
-                  setState(() {
-                    _focusedDay = DateTime(
-                      _focusedDay.year,
-                      _focusedDay.month + 1,
-                    );
-                  });
-                },
+                icon: const Icon(Icons.chevron_right, color: Color(0xFF44403B)),
+                onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1)),
               ),
             ],
           ),
           TableCalendar(
-            locale: 'ko_KR',
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2035, 12, 31),
-            focusedDay: _focusedDay,
+            locale: 'ko_KR', firstDay: DateTime.utc(2020, 1, 1), lastDay: DateTime.utc(2035, 12, 31),
+            focusedDay: _focusedDay, rowHeight: 72, daysOfWeekHeight: 32,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
-
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) => ScheduleDetailPage(
-                  date: selectedDay,
-                ),
-              );
+              setState(() { _selectedDay = selectedDay; _focusedDay = focusedDay; });
+              _showScheduleListDialog(context, selectedDay);
             },
             headerVisible: false,
-            calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(
-                color: const Color(0xFFE9DFFF),
-                shape: BoxShape.circle,
-              ),
-              selectedDecoration: BoxDecoration(
-                color: const Color(0xFFB388FF),
-                shape: BoxShape.circle,
-              ),
-            ),
-            daysOfWeekStyle: const DaysOfWeekStyle(
-              weekendStyle: TextStyle(color: Colors.red),
+            calendarBuilders: CalendarBuilders(
+              defaultBuilder: (context, day, _) => _buildDayCell(day),
+              todayBuilder: (context, day, _) => _buildDayCell(day),
+              selectedBuilder: (context, day, _) => _buildDayCell(day, textColor: const Color(0xFF44403B)),
+              outsideBuilder: (context, day, _) => _buildDayCell(day, textColor: Colors.grey.withOpacity(0.5)),
             ),
           ),
         ],
@@ -157,27 +219,13 @@ class _RecordPageState extends State<RecordPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 6))],
           ),
           child: Column(
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(22),
-                ),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.asset(
-                    _images[index],
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                child: AspectRatio(aspectRatio: 1, child: Image.asset(_images[index], fit: BoxFit.cover)),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -186,10 +234,7 @@ class _RecordPageState extends State<RecordPage> {
                   children: [
                     const Icon(Icons.calendar_today, size: 14),
                     const SizedBox(width: 6),
-                    Text(
-                      DateFormat('yyyy년 M월 d일').format(_selectedDay),
-                      style: const TextStyle(fontSize: 12),
-                    ),
+                    Text(DateFormat('yyyy년 M월 d일').format(_selectedDay), style: const TextStyle(fontSize: 12)),
                   ],
                 ),
               ),
@@ -200,9 +245,3 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 }
-
-
-
-
-
-
