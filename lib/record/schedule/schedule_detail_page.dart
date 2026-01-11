@@ -5,7 +5,7 @@ import 'color_picker_dialog.dart';
 
 class ScheduleDetailPage extends StatefulWidget {
   final DateTime date;
-  final Schedule? schedule; // 수정 시 기존 일정을 받기 위한 변수 추가
+  final Schedule? schedule;
 
   const ScheduleDetailPage({super.key, required this.date, this.schedule});
 
@@ -23,7 +23,7 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
   @override
   void initState() {
     super.initState();
-    // 수정 모드일 경우 기존 데이터를, 아닐 경우 기본값을 설정합니다.
+    // 수정: widget.schedule?.text를 widget.schedule?.title로 변경
     _color = widget.schedule?.color ?? const Color(0xFF605A55);
     _titleController = TextEditingController(text: widget.schedule?.title ?? '');
     _contentController = TextEditingController(text: widget.schedule?.content ?? '');
@@ -57,10 +57,23 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
             Row(
               children: [
                 Text(
-                  widget.schedule == null ? '일정 추가' : '일정 수정', // 제목 동적 변경
+                  widget.schedule == null ? '일정 추가' : '일정 수정',
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF44403B)),
                 ),
                 const Spacer(),
+                // 알람 아이콘 토글 버튼 (요청하신 디자인 적용)
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => setState(() => _alarmOn = !_alarmOn),
+                  icon: Icon(
+                    _alarmOn ? Icons.notifications : Icons.notifications_off_outlined,
+                    color: const Color(0xFF44403B),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 색상 선택 버튼
                 GestureDetector(
                   onTap: () async {
                     final picked = await showDialog<Color>(context: context, builder: (_) => ColorPickerDialog(initialColor: _color));
@@ -68,8 +81,11 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                   },
                   child: CircleAvatar(radius: 10, backgroundColor: _color),
                 ),
-                const SizedBox(width: 16),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                const SizedBox(width: 8),
+                IconButton(
+                    icon: const Icon(Icons.close, color: Color(0xFF605A55), size: 20),
+                    onPressed: () => Navigator.pop(context)
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -105,7 +121,11 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF44403B), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), padding: const EdgeInsets.symmetric(vertical: 14)),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF44403B),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 14)
+                ),
                 onPressed: () {
                   if (_titleController.text.isEmpty) return;
                   Navigator.pop(

@@ -5,7 +5,9 @@ import 'schedule/schedule_detail_page.dart';
 import 'record_data.dart' as record;
 
 class CalendarSection extends StatefulWidget {
-  const CalendarSection({super.key});
+  final Function(DateTime selectedDay, DateTime focusedDay)? onDayChanged;
+
+  const CalendarSection({super.key, this.onDayChanged});
 
   @override
   State<CalendarSection> createState() => _CalendarSectionState();
@@ -15,9 +17,18 @@ class _CalendarSectionState extends State<CalendarSection> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
-  Widget _buildDayCell(DateTime day, {Color? textColor}) {
+  Widget _buildDayCell(DateTime day, {bool isSelected = false, Color? textColor}) {
     final key = record.normalizeDate(day);
-    final schedules = record.schedules[key] ?? [];
+    // 캘린더 셀에서도 시간순으로 보여주기 위해 정렬
+    final schedules = [...(record.schedules[key] ?? [])];
+    schedules.sort((a, b) {
+      if (a.time == null && b.time == null) return 0;
+      if (a.time == null) return 1;
+      if (b.time == null) return -1;
+      final aTime = a.time!.hour * 60 + a.time!.minute;
+      final bTime = b.time!.hour * 60 + b.time!.minute;
+      return aTime.compareTo(bTime);
+    });
 
     Color dayColor = Colors.black;
     if (day.weekday == DateTime.sunday) dayColor = Colors.red;
@@ -35,7 +46,9 @@ class _CalendarSectionState extends State<CalendarSection> {
             height: 28,
             width: 28,
             alignment: Alignment.center,
-            decoration: isToday
+            decoration: isSelected
+                ? const BoxDecoration(color: Color(0xFF44403B), shape: BoxShape.circle)
+                : isToday
                 ? BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFFF1F2ED), width: 4.0),
@@ -45,8 +58,8 @@ class _CalendarSectionState extends State<CalendarSection> {
               '${day.day}',
               style: TextStyle(
                 fontSize: 15,
-                color: dayColor,
-                fontWeight: FontWeight.normal,
+                color: isSelected ? Colors.white : dayColor,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ),
@@ -86,7 +99,18 @@ class _CalendarSectionState extends State<CalendarSection> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final daySchedules = record.schedules[key] ?? [];
+            // [핵심 변경] 리스트를 복사한 뒤 시간순으로 정렬
+            final daySchedules = [...(record.schedules[key] ?? [])];
+            daySchedules.sort((a, b) {
+              if (a.time == null && b.time == null) return 0;
+              if (a.time == null) return 1; // 시간이 없는 일정은 뒤로
+              if (b.time == null) return -1;
+
+              // 시간을 분 단위로 환산하여 비교
+              final aTotalMinutes = a.time!.hour * 60 + a.time!.minute;
+              final bTotalMinutes = b.time!.hour * 60 + b.time!.minute;
+              return aTotalMinutes.compareTo(bTotalMinutes);
+            });
 
             return Dialog(
               backgroundColor: const Color(0xFFF1F2ED),
@@ -101,7 +125,7 @@ class _CalendarSectionState extends State<CalendarSection> {
                     Row(
                       children: [
                         Text(
-                          '${day.day} ${DateFormat('EEEE', 'ko_KR').format(day)}',
+                          '${day.day}일 ${DateFormat('EEEE', 'ko_KR').format(day)}',
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF44403B)),
                         ),
                         const Spacer(),
@@ -128,7 +152,8 @@ class _CalendarSectionState extends State<CalendarSection> {
                               children: [
                                 Container(
                                   margin: const EdgeInsets.only(top: 4),
-                                  width: 4, height: 32,
+                                  width: 4,
+                                  height: 32,
                                   decoration: BoxDecoration(color: s.color, borderRadius: BorderRadius.circular(2)),
                                 ),
                                 const SizedBox(width: 12),
@@ -148,7 +173,6 @@ class _CalendarSectionState extends State<CalendarSection> {
                                     ],
                                   ),
                                 ),
-                                // 수정 버튼 추가
                                 IconButton(
                                   icon: const Icon(Icons.edit_outlined, color: Color(0xFF605A55), size: 20),
                                   onPressed: () async {
@@ -159,7 +183,10 @@ class _CalendarSectionState extends State<CalendarSection> {
                                     );
                                     if (editedResult != null) {
                                       setModalState(() {
-                                        record.schedules[key]![index] = editedResult;
+                                        // 정렬된 리스트가 아닌 원본 데이터 맵에서 해당 일정을 찾아 업데이트
+                                        final originalList = record.schedules[key]!;
+                                        final originalIndex = originalList.indexOf(s);
+                                        originalList[originalIndex] = editedResult;
                                       });
                                       setState(() {});
                                     }
@@ -168,7 +195,9 @@ class _CalendarSectionState extends State<CalendarSection> {
                                 IconButton(
                                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
                                   onPressed: () {
-                                    setModalState(() => record.schedules[key]!.removeAt(index));
+                                    setModalState(() {
+                                      record.schedules[key]!.remove(s);
+                                    });
                                     setState(() {});
                                   },
                                 ),
@@ -236,22 +265,22 @@ class _CalendarSectionState extends State<CalendarSection> {
             rowHeight: 72,
             daysOfWeekHeight: 32,
             onPageChanged: (focusedDay) {
-              setState(() {
-                _focusedDay = focusedDay;
-              });
+              setState(() => _focusedDay = focusedDay);
+              if (widget.onDayChanged != null) widget.onDayChanged!(_selectedDay, _focusedDay);
             },
             onDaySelected: (selectedDay, focusedDay) {
               setState(() {
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
               });
+              if (widget.onDayChanged != null) widget.onDayChanged!(_selectedDay, _focusedDay);
               _showScheduleListDialog(context, selectedDay);
             },
             headerVisible: false,
             calendarBuilders: CalendarBuilders(
               defaultBuilder: (context, day, _) => _buildDayCell(day),
               todayBuilder: (context, day, _) => _buildDayCell(day),
-              selectedBuilder: (context, day, _) => _buildDayCell(day, textColor: const Color(0xFF44403B)),
+              selectedBuilder: (context, day, _) => _buildDayCell(day, isSelected: true),
               outsideBuilder: (context, day, _) => _buildDayCell(day, textColor: Colors.grey.withOpacity(0.5)),
             ),
           ),
@@ -263,9 +292,13 @@ class _CalendarSectionState extends State<CalendarSection> {
   Widget _buildHeader() {
     return Row(
       children: [
-        IconButton(icon: const Icon(Icons.chevron_left, color: Color(0xFF44403B)), onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1))),
+        IconButton(
+            icon: const Icon(Icons.chevron_left, color: Color(0xFF44403B)),
+            onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1))),
         Expanded(child: Center(child: Text(DateFormat('yyyy년 M월').format(_focusedDay), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF44403B))))),
-        IconButton(icon: const Icon(Icons.chevron_right, color: Color(0xFF44403B)), onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1))),
+        IconButton(
+            icon: const Icon(Icons.chevron_right, color: Color(0xFF44403B)),
+            onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1))),
       ],
     );
   }
