@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
-import 'schedule/schedule_detail_page.dart';
+import 'schedule/schedule_detail_page.dart'; // 경로 확인 필요
 import 'record_data.dart' as record;
 
 class CalendarSection extends StatefulWidget {
+  final String selectedPetName; // 선택된 펫 이름 수신
   final Function(DateTime selectedDay, DateTime focusedDay)? onDayChanged;
 
-  const CalendarSection({super.key, this.onDayChanged});
+  const CalendarSection({super.key, required this.selectedPetName, this.onDayChanged});
 
   @override
   State<CalendarSection> createState() => _CalendarSectionState();
@@ -17,12 +18,16 @@ class _CalendarSectionState extends State<CalendarSection> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
+  // 특정 펫의 정렬된 일정 가져오기
   List<record.Schedule> _getSortedSchedules(DateTime day) {
-    final key = record.normalizeDate(day);
-    final List<record.Schedule> list = record.schedules[key] != null
-        ? List<record.Schedule>.from(record.schedules[key]!)
-        : <record.Schedule>[];
+    if (widget.selectedPetName.isEmpty) return []; // 펫이 선택되지 않은 경우
 
+    final key = record.normalizeDate(day);
+    // 선택된 펫의 일정 맵을 참조합니다.
+    final petMap = record.schedules[widget.selectedPetName];
+    if (petMap == null || petMap[key] == null) return [];
+
+    final List<record.Schedule> list = List<record.Schedule>.from(petMap[key]!);
     list.sort((a, b) {
       if (a.time == null && b.time == null) return 0;
       if (a.time == null) return 1;
@@ -134,8 +139,8 @@ class _CalendarSectionState extends State<CalendarSection> {
                               );
                               if (result != null) {
                                 setModalState(() {
-                                  final list = record.schedules[key]!;
-                                  list[list.indexOf(s)] = result;
+                                  // 선택된 펫의 데이터 공간에서 수정합니다.
+                                  record.schedules[widget.selectedPetName]![key]![index] = result;
                                 });
                                 setState(() {});
                                 if (widget.onDayChanged != null) widget.onDayChanged!(_selectedDay, _focusedDay);
@@ -143,7 +148,8 @@ class _CalendarSectionState extends State<CalendarSection> {
                             }),
                             IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20), onPressed: () {
                               setModalState(() {
-                                record.schedules[key]!.remove(s);
+                                // 선택된 펫의 데이터 공간에서 삭제합니다.
+                                record.schedules[widget.selectedPetName]![key]!.remove(s);
                               });
                               setState(() {});
                               if (widget.onDayChanged != null) widget.onDayChanged!(_selectedDay, _focusedDay);
@@ -166,7 +172,9 @@ class _CalendarSectionState extends State<CalendarSection> {
                         final result = await showDialog<record.Schedule>(context: context, builder: (_) => ScheduleDetailPage(date: day));
                         if (result != null) {
                           setModalState(() {
-                            record.schedules.putIfAbsent(key, () => []).add(result);
+                            // 선택된 펫의 공간에 일정을 추가합니다.
+                            record.schedules.putIfAbsent(widget.selectedPetName, () => {});
+                            record.schedules[widget.selectedPetName]!.putIfAbsent(key, () => []).add(result);
                           });
                           setState(() {});
                           if (widget.onDayChanged != null) widget.onDayChanged!(_selectedDay, _focusedDay);

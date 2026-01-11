@@ -4,20 +4,27 @@ import 'package:intl/intl.dart';
 import 'record_data.dart' as record;
 
 class PhotoGridSection extends StatelessWidget {
+  final String selectedPetName;
   final DateTime focusedDay;
 
-  const PhotoGridSection({super.key, required this.focusedDay});
+  const PhotoGridSection({super.key, required this.selectedPetName, required this.focusedDay});
 
   @override
   Widget build(BuildContext context) {
+    if (selectedPetName.isEmpty) return const SizedBox.shrink();
+
     List<MapEntry<DateTime, String>> monthPhotos = [];
-    record.photos.forEach((date, paths) {
-      if (date.year == focusedDay.year && date.month == focusedDay.month) {
-        for (var path in paths) {
-          monthPhotos.add(MapEntry(date, path));
+    final petPhotos = record.photos[selectedPetName];
+
+    if (petPhotos != null) {
+      petPhotos.forEach((date, paths) {
+        if (date.year == focusedDay.year && date.month == focusedDay.month) {
+          for (var path in paths) {
+            monthPhotos.add(MapEntry(date, path));
+          }
         }
-      }
-    });
+      });
+    }
 
     monthPhotos.sort((a, b) => a.key.compareTo(b.key));
 
@@ -31,8 +38,9 @@ class PhotoGridSection extends StatelessWidget {
     }
 
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      // [핵심] GridView가 스스로 스크롤하지 않고 전체 화면 스크롤을 따라가도록 설정합니다.
+      shrinkWrap: true, // 내용만큼의 높이만 차지하게 함
+      physics: const NeverScrollableScrollPhysics(), // 내부 스크롤 금지
       itemCount: monthPhotos.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,

@@ -93,21 +93,37 @@ class _MainPageState extends State<MainPage> {
                             child: Dismissible(
                               key: UniqueKey(),
                               direction: DismissDirection.endToStart,
+                              // main.dart의 Dismissible 내부
+                              // main.dart의 Dismissible 내부 onDismissed 부분
                               onDismissed: (direction) {
                                 setModalState(() {
                                   final key = record.normalizeDate(s.date);
-                                  final list = record.schedules[key];
-                                  if (list != null) {
-                                    final idx = list.indexOf(s);
+                                  // [수정] s.petName을 사용하여 해당 펫의 일정 리스트를 정확히 찾아갑니다.
+                                  final petSchedules = record.schedules[s.petName];
+                                  if (petSchedules != null && petSchedules[key] != null) {
+                                    final list = petSchedules[key]!;
+                                    // 인스턴스가 다를 수 있으므로 속성(제목, 시간 등)으로 해당 일정을 찾습니다.
+                                    final idx = list.indexWhere((item) =>
+                                    item.title == s.title &&
+                                        item.time == s.time &&
+                                        record.normalizeDate(item.date) == key
+                                    );
+
                                     if (idx != -1) {
+                                      // 알림 상태만 false로 변경하여 리스트에서 제거합니다.
                                       list[idx] = record.Schedule(
-                                        date: s.date, title: s.title, content: s.content,
-                                        color: s.color, time: s.time, alarm: false,
+                                        petName: s.petName,
+                                        date: s.date,
+                                        title: s.title,
+                                        content: s.content,
+                                        color: s.color,
+                                        time: s.time,
+                                        alarm: false,
                                       );
                                     }
                                   }
                                 });
-                                setState(() {});
+                                setState(() {}); // 메인 배지 갱신
                               },
                               background: Container(
                                 decoration: BoxDecoration(
@@ -122,26 +138,69 @@ class _MainPageState extends State<MainPage> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [BoxShadow(color: const Color(0xFF44403B).withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 4))],
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF44403B).withOpacity(0.08),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    )
+                                  ],
                                 ),
                                 child: Padding(
                                   padding: const EdgeInsets.all(12.0),
-                                  child: Row(
+                                  child: Row( // Row에는 children: [] 이 꼭 필요해!
                                     children: [
+                                      // 1. 왼쪽 아이콘 아이콘
                                       Container(
-                                        width: 48, height: 48,
-                                        decoration: BoxDecoration(color: s.color.withOpacity(0.2), shape: BoxShape.circle),
-                                        child: Center(child: Icon(Icons.notifications_active_rounded, color: s.color, size: 24)),
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: s.color.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Icon(Icons.notifications_active_rounded, color: s.color, size: 24),
+                                        ),
                                       ),
                                       const SizedBox(width: 16),
+                                      // 2. 오른쪽 텍스트 영역 (Expanded로 감싸야 텍스트가 넘치지 않아!)
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text('${DateFormat('M월 d일').format(s.date)} · ${s.time!.format(context)}',
-                                                style: TextStyle(fontSize: 12, color: const Color(0xFF44403B).withOpacity(0.6), fontWeight: FontWeight.w600)),
+                                            // 펫 이름과 시간을 한 줄에 표시
+                                            RichText(
+                                              text: TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text: '${s.petName} ', //
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: s.color, // 일정 색상과 맞춰서 강조
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  TextSpan(
+                                                    text: '· ${DateFormat('M월 d일').format(s.date)} · ${s.time!.format(context)}',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: const Color(0xFF44403B).withOpacity(0.6),
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                             const SizedBox(height: 4),
-                                            Text(s.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF44403B))),
+                                            // 일정 제목
+                                            Text(
+                                              s.title,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 15,
+                                                color: Color(0xFF44403B),
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
