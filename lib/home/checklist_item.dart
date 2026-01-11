@@ -19,7 +19,7 @@ class CheckListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isDone = item['isDone'];
+    bool isDone = item['isDone'] ?? false;
     var iconData = item['icon'];
 
     return Container(
@@ -104,6 +104,7 @@ class CheckListItem extends StatelessWidget {
                                 ? TextDecoration.lineThrough
                                 : TextDecoration.none,
                             decorationColor: Colors.grey,
+                            decorationThickness: 2.0,
                           ),
                         ),
                         if (item['time'] != null &&
@@ -113,7 +114,7 @@ class CheckListItem extends StatelessWidget {
                             item['time'],
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: isDone ? Colors.grey[500] : Colors.black,
                             ),
                           ),
                         ],
