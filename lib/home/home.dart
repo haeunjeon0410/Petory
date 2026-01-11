@@ -6,7 +6,8 @@ import 'checklist_item.dart';
 import '../record/record_data.dart' as record;
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final VoidCallback? onRefresh;
+  const HomePage({super.key, this.onRefresh});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -15,7 +16,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // --- 1. 상태 데이터 ---
   List<String> get myPets => record.myPets;
-  int _selectedPetIndex = 0;
 
   Map<String, List<Map<String, dynamic>>> get petChecklists =>
       record.petChecklists;
@@ -255,7 +255,12 @@ class _HomePageState extends State<HomePage> {
   // --- 3. 화면 빌드 ---
   @override
   Widget build(BuildContext context) {
-    String currentPetName = myPets[_selectedPetIndex];
+    // _selectedPetIndex 대신 record.selectedPetName을 사용하도록 수정!
+    String currentPetName = record.selectedPetName;
+    if (currentPetName.isEmpty && record.myPets.isNotEmpty) {
+      currentPetName = record.myPets[0];
+    }
+
     List<Map<String, dynamic>> currentCheckList =
         petChecklists[currentPetName] ?? [];
     Map<String, dynamic> currentProfile = petProfiles[currentPetName] ?? {};
@@ -280,14 +285,21 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   ...List.generate(myPets.length, (index) {
+                    String petName = myPets[index];
+                    // ⭐ 수정: 로컬 인덱스 대신 공용 이름을 사용해 선택 여부 판단
+                    bool isSelected = record.selectedPetName == petName;
+
                     return Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedPetIndex = index),
-                        child: _buildPetSelectButton(
-                          myPets[index],
-                          _selectedPetIndex == index,
-                        ),
+                        onTap: () {
+                          setState(() {
+                            record.selectedPetName = petName; // ⭐ 공용 변수 업데이트
+                          });
+                          if (widget.onRefresh != null)
+                            widget.onRefresh!(); // ⭐ 메인 갱신
+                        },
+                        child: _buildPetSelectButton(petName, isSelected),
                       ),
                     );
                   }),
@@ -550,15 +562,15 @@ class _HomePageState extends State<HomePage> {
             child: const PetRegistrationDialog(), // (이름 변경 예정)
           ),
         );
-
         if (result != null && result is Map<String, dynamic>) {
           String newName = result['name'];
           setState(() {
             record.myPets.add(newName);
             record.petChecklists[newName] = [];
             record.petProfiles[newName] = result;
-            _selectedPetIndex = myPets.length - 1;
+            record.selectedPetName = newName; // 새로 추가된 펫을 공용 변수에 저장
           });
+          if (widget.onRefresh != null) widget.onRefresh!(); // 메인 갱신
         }
       },
       child: Container(

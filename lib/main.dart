@@ -115,20 +115,16 @@ class _MainPageState extends State<MainPage> {
                                   child: Dismissible(
                                     key: UniqueKey(),
                                     direction: DismissDirection.endToStart,
-                                    // main.dart의 Dismissible 내부
-                                    // main.dart의 Dismissible 내부 onDismissed 부분
                                     onDismissed: (direction) {
                                       setModalState(() {
                                         final key = record.normalizeDate(
                                           s.date,
                                         );
-                                        // [수정] s.petName을 사용하여 해당 펫의 일정 리스트를 정확히 찾아갑니다.
                                         final petSchedules =
                                             record.schedules[s.petName];
                                         if (petSchedules != null &&
                                             petSchedules[key] != null) {
                                           final list = petSchedules[key]!;
-                                          // 인스턴스가 다를 수 있으므로 속성(제목, 시간 등)으로 해당 일정을 찾습니다.
                                           final idx = list.indexWhere(
                                             (item) =>
                                                 item.title == s.title &&
@@ -140,7 +136,6 @@ class _MainPageState extends State<MainPage> {
                                           );
 
                                           if (idx != -1) {
-                                            // 알림 상태만 false로 변경하여 리스트에서 제거합니다.
                                             list[idx] = record.Schedule(
                                               petName: s.petName,
                                               date: s.date,
@@ -153,7 +148,7 @@ class _MainPageState extends State<MainPage> {
                                           }
                                         }
                                       });
-                                      setState(() {}); // 메인 배지 갱신
+                                      setState(() {});
                                     },
                                     background: Container(
                                       decoration: BoxDecoration(
@@ -184,9 +179,7 @@ class _MainPageState extends State<MainPage> {
                                       child: Padding(
                                         padding: const EdgeInsets.all(12.0),
                                         child: Row(
-                                          // Row에는 children: [] 이 꼭 필요해!
                                           children: [
-                                            // 1. 왼쪽 아이콘 아이콘
                                             Container(
                                               width: 48,
                                               height: 48,
@@ -204,23 +197,19 @@ class _MainPageState extends State<MainPage> {
                                               ),
                                             ),
                                             const SizedBox(width: 16),
-                                            // 2. 오른쪽 텍스트 영역 (Expanded로 감싸야 텍스트가 넘치지 않아!)
                                             Expanded(
                                               child: Column(
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
-                                                  // 펫 이름과 시간을 한 줄에 표시
                                                   RichText(
                                                     text: TextSpan(
                                                       children: [
                                                         TextSpan(
-                                                          text:
-                                                              '${s.petName} ', //
+                                                          text: '${s.petName} ',
                                                           style: TextStyle(
                                                             fontSize: 12,
-                                                            color: s
-                                                                .color, // 일정 색상과 맞춰서 강조
+                                                            color: s.color,
                                                             fontWeight:
                                                                 FontWeight.bold,
                                                           ),
@@ -241,7 +230,6 @@ class _MainPageState extends State<MainPage> {
                                                     ),
                                                   ),
                                                   const SizedBox(height: 4),
-                                                  // 일정 제목
                                                   Text(
                                                     s.title,
                                                     style: const TextStyle(
@@ -282,8 +270,10 @@ class _MainPageState extends State<MainPage> {
     _lastNotificationCount = activeAlarms.length;
     bool showRedDot = activeAlarms.isNotEmpty && !_isBadgeRead;
 
+    // ⭐ [가장 중요한 수정] HomePage에도 onRefresh를 전달합니다.
+    // 이제 홈 탭에서 펫을 바꾸면 MainPage가 새로고침되어 레코드 탭도 동기화됩니다.
     final List<Widget> screens = [
-      const HomePage(),
+      HomePage(onRefresh: () => setState(() {})),
       RecordPage(onRefresh: () => setState(() {})),
       const NutritionPage(),
       const AiPage(),

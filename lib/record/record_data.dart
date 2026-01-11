@@ -28,6 +28,10 @@ DateTime normalizeDate(DateTime date) {
 
 // --- [공용 데이터 섹션] 홈 탭과 레코드 탭이 공유합니다 ---
 
+// ⭐ [핵심 추가] 현재 앱 전체에서 선택된 펫의 이름을 관리하는 변수입니다.
+// 이 변수를 통해 홈 탭과 레코드 탭이 서로 같은 펫을 바라보게 됩니다.
+String selectedPetName = "맥스";
+
 List<String> myPets = ["맥스"];
 
 Map<String, Map<String, dynamic>> petProfiles = {
@@ -89,9 +93,8 @@ List<Schedule> getActiveAlarmsForNext24Hours() {
     });
   });
 
-  // --- [핵심 수정] 시간순 정렬: 다가올 일정이 위로 오도록 합니다 ---
+  // 시간순 정렬: 다가올 일정이 위로 오도록 합니다
   active.sort((a, b) {
-    // a와 b의 날짜+시간을 합쳐서 비교합니다.
     final aDt = DateTime(a.date.year, a.date.month, a.date.day, a.time!.hour, a.time!.minute);
     final bDt = DateTime(b.date.year, b.date.month, b.date.day, b.time!.hour, b.time!.minute);
     return aDt.compareTo(bDt); // 더 빠른 시간이 리스트의 앞(위)으로 옵니다.
