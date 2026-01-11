@@ -17,8 +17,6 @@ class _RecordPageState extends State<RecordPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
-  // 1. [로직 변경] 로컬 변수를 삭제하고 record.selectedPetName을 직접 사용합니다.
-
   void _openAddPetDialog() async {
     final result = await showDialog(
       context: context,
@@ -36,31 +34,37 @@ class _RecordPageState extends State<RecordPage> {
         record.myPets.add(newName);
         record.petChecklists[newName] = [];
         record.petProfiles[newName] = result;
-        // 2. [연동] 새로 등록한 펫을 공용 선택 변수에 저장
         record.selectedPetName = newName;
       });
-      // 3. [연동] MainPage를 새로고침하여 홈 탭도 알게 함
       if (widget.onRefresh != null) widget.onRefresh!();
     }
   }
 
+  // ⭐ [수정] 사진 업로드 시 현재 선택된 날짜가 아닌 '오늘' 날짜로 저장되도록 변경
   Future<void> _pickImage() async {
     if (record.selectedPetName.isEmpty) return;
+
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
     if (image != null) {
+      // 캘린더에서 선택한 _selectedDay 대신 오늘(DateTime.now())을 사용합니다.
+      final today = DateTime.now();
+      final key = record.normalizeDate(today);
+
       setState(() {
-        final key = record.normalizeDate(_selectedDay);
         record.photos.putIfAbsent(record.selectedPetName, () => {});
         record.photos[record.selectedPetName]!.putIfAbsent(key, () => []);
         record.photos[record.selectedPetName]![key]!.add(image.path);
       });
+
+      // 사진 등록 후 다른 탭이나 UI가 갱신되도록 콜백 실행
+      if (widget.onRefresh != null) widget.onRefresh!();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 4. [연동] 공용 변수에서 현재 선택된 펫 이름을 가져옴
     String currentPetName = record.selectedPetName;
     if (currentPetName.isEmpty && record.myPets.isNotEmpty) {
       currentPetName = record.myPets[0];
@@ -75,7 +79,6 @@ class _RecordPageState extends State<RecordPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 5. [디자인 통일] 홈 탭과 똑같은 펫 선택 바
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -110,9 +113,14 @@ class _RecordPageState extends State<RecordPage> {
                 },
               ),
               const SizedBox(height: 24),
+              // ⭐ PhotoGridSection 호출 시 onRefresh 인자를 전달하여
+              // 사진 삭제나 날짜 변경 시 화면이 즉시 새로고침되게 합니다.
               PhotoGridSection(
                 selectedPetName: currentPetName,
                 focusedDay: _focusedDay,
+                onRefresh: () {
+                  setState(() {}); // 데이터 변경 감지 시 UI 갱신
+                },
               ),
             ],
           ),
@@ -126,7 +134,6 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
-  // 6. [디자인 통일] 홈 탭과 버튼 스타일 완벽 일치
   Widget _buildAddPetButton() {
     return GestureDetector(
       onTap: _openAddPetDialog,
@@ -135,7 +142,7 @@ class _RecordPageState extends State<RecordPage> {
         height: 36,
         decoration: BoxDecoration(
           color: const Color(0xFF44403B),
-          borderRadius: BorderRadius.circular(18), // 둥글기 일치
+          borderRadius: BorderRadius.circular(18),
         ),
         child: const Icon(Icons.add, color: Colors.white, size: 20),
       ),

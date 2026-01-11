@@ -160,7 +160,7 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                 },
                 child: Text(
                   widget.schedule == null ? '저장하기' : '수정 완료',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
             ),
