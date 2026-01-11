@@ -44,9 +44,9 @@ class _MainPageState extends State<MainPage> {
 
   final List<Widget> _screens = [
     HomePage(),
-    Container(),
-    Container(),
-    Container(),
+    RecordPage(),
+    NutritionPage(),
+    AiPage(),
   ];
 
   final List<IconData> _icons = [
