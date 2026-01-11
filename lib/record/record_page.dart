@@ -7,7 +7,6 @@ import '../home/register_pet.dart';
 
 class RecordPage extends StatefulWidget {
   final VoidCallback? onRefresh;
-
   const RecordPage({super.key, this.onRefresh});
 
   @override
@@ -17,25 +16,16 @@ class RecordPage extends StatefulWidget {
 class _RecordPageState extends State<RecordPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
-  late String _selectedPetName;
 
-  @override
-  void initState() {
-    super.initState();
-    // 초기값으로 첫 번째 펫을 선택합니다.
-    _selectedPetName = record.myPets.isNotEmpty ? record.myPets[0] : "";
-  }
+  // 1. [로직 변경] 로컬 변수를 삭제하고 record.selectedPetName을 직접 사용합니다.
 
-  // 반려동물 등록 다이얼로그를 여는 함수
   void _openAddPetDialog() async {
     final result = await showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: const PetRegistrationDialog(),
       ),
     );
@@ -43,37 +33,40 @@ class _RecordPageState extends State<RecordPage> {
     if (result != null && result is Map<String, dynamic>) {
       String newName = result['name'];
       setState(() {
-        // 공통 데이터(record_data.dart)에 새 펫 정보 추가
         record.myPets.add(newName);
         record.petChecklists[newName] = [];
         record.petProfiles[newName] = result;
-
-        // 새로 등록한 펫을 바로 선택 상태로 변경
-        _selectedPetName = newName;
+        // 2. [연동] 새로 등록한 펫을 공용 선택 변수에 저장
+        record.selectedPetName = newName;
       });
-      // 상위 위젯(MainPage 등)의 배지나 상태를 갱신해야 할 때 호출
+      // 3. [연동] MainPage를 새로고침하여 홈 탭도 알게 함
       if (widget.onRefresh != null) widget.onRefresh!();
     }
   }
 
   Future<void> _pickImage() async {
-    if (_selectedPetName.isEmpty) return;
-
+    if (record.selectedPetName.isEmpty) return;
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
         final key = record.normalizeDate(_selectedDay);
-        record.photos.putIfAbsent(_selectedPetName, () => {});
-        record.photos[_selectedPetName]!.putIfAbsent(key, () => []);
-        record.photos[_selectedPetName]![key]!.add(image.path);
+        record.photos.putIfAbsent(record.selectedPetName, () => {});
+        record.photos[record.selectedPetName]!.putIfAbsent(key, () => []);
+        record.photos[record.selectedPetName]![key]!.add(image.path);
       });
-      if (widget.onRefresh != null) widget.onRefresh!();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // 4. [연동] 공용 변수에서 현재 선택된 펫 이름을 가져옴
+    String currentPetName = record.selectedPetName;
+    if (currentPetName.isEmpty && record.myPets.isNotEmpty) {
+      currentPetName = record.myPets[0];
+      record.selectedPetName = currentPetName;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
       body: SafeArea(
@@ -82,46 +75,43 @@ class _RecordPageState extends State<RecordPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 펫 선택 바 + 추가 버튼
+              // 5. [디자인 통일] 홈 탭과 똑같은 펫 선택 바
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    // 기존 펫 목록
                     ...record.myPets.map((name) {
-                      bool isSelected = _selectedPetName == name;
+                      bool isSelected = record.selectedPetName == name;
                       return Padding(
                         padding: const EdgeInsets.only(right: 10),
                         child: GestureDetector(
-                          onTap: () => setState(() => _selectedPetName = name),
+                          onTap: () {
+                            setState(() {
+                              record.selectedPetName = name;
+                            });
+                            if (widget.onRefresh != null) widget.onRefresh!();
+                          },
                           child: _buildPetSelectButton(name, isSelected),
                         ),
                       );
                     }).toList(),
-
-                    // 2. 추가 버튼 배치
                     _buildAddPetButton(),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-
-              // 캘린더 섹션
               CalendarSection(
-                selectedPetName: _selectedPetName,
+                selectedPetName: currentPetName,
                 onDayChanged: (selectedDay, focusedDay) {
                   setState(() {
                     _selectedDay = selectedDay;
                     _focusedDay = focusedDay;
                   });
-                  if (widget.onRefresh != null) widget.onRefresh!();
                 },
               ),
               const SizedBox(height: 24),
-
-              // 사진 그리드 섹션
               PhotoGridSection(
-                selectedPetName: _selectedPetName,
+                selectedPetName: currentPetName,
                 focusedDay: _focusedDay,
               ),
             ],
@@ -136,7 +126,7 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
-  // 추가(+) 버튼 위젯 (홈 탭과 디자인 통일)
+  // 6. [디자인 통일] 홈 탭과 버튼 스타일 완벽 일치
   Widget _buildAddPetButton() {
     return GestureDetector(
       onTap: _openAddPetDialog,
@@ -145,7 +135,7 @@ class _RecordPageState extends State<RecordPage> {
         height: 36,
         decoration: BoxDecoration(
           color: const Color(0xFF44403B),
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(18), // 둥글기 일치
         ),
         child: const Icon(Icons.add, color: Colors.white, size: 20),
       ),
