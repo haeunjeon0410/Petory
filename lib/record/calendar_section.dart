@@ -5,7 +5,7 @@ import 'schedule/schedule_detail_page.dart'; // 경로 확인 필요
 import 'record_data.dart' as record;
 
 class CalendarSection extends StatefulWidget {
-  final String selectedPetName; // 선택된 펫 이름 수신
+  final String selectedPetName;
   final Function(DateTime selectedDay, DateTime focusedDay)? onDayChanged;
 
   const CalendarSection({super.key, required this.selectedPetName, this.onDayChanged});
@@ -18,12 +18,10 @@ class _CalendarSectionState extends State<CalendarSection> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
-  // 특정 펫의 정렬된 일정 가져오기
   List<record.Schedule> _getSortedSchedules(DateTime day) {
-    if (widget.selectedPetName.isEmpty) return []; // 펫이 선택되지 않은 경우
+    if (widget.selectedPetName.isEmpty) return [];
 
     final key = record.normalizeDate(day);
-    // 선택된 펫의 일정 맵을 참조합니다.
     final petMap = record.schedules[widget.selectedPetName];
     if (petMap == null || petMap[key] == null) return [];
 
@@ -139,7 +137,6 @@ class _CalendarSectionState extends State<CalendarSection> {
                               );
                               if (result != null) {
                                 setModalState(() {
-                                  // 선택된 펫의 데이터 공간에서 수정합니다.
                                   record.schedules[widget.selectedPetName]![key]![index] = result;
                                 });
                                 setState(() {});
@@ -148,7 +145,6 @@ class _CalendarSectionState extends State<CalendarSection> {
                             }),
                             IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20), onPressed: () {
                               setModalState(() {
-                                // 선택된 펫의 데이터 공간에서 삭제합니다.
                                 record.schedules[widget.selectedPetName]![key]!.remove(s);
                               });
                               setState(() {});
@@ -172,7 +168,6 @@ class _CalendarSectionState extends State<CalendarSection> {
                         final result = await showDialog<record.Schedule>(context: context, builder: (_) => ScheduleDetailPage(date: day));
                         if (result != null) {
                           setModalState(() {
-                            // 선택된 펫의 공간에 일정을 추가합니다.
                             record.schedules.putIfAbsent(widget.selectedPetName, () => {});
                             record.schedules[widget.selectedPetName]!.putIfAbsent(key, () => []).add(result);
                           });
@@ -213,6 +208,11 @@ class _CalendarSectionState extends State<CalendarSection> {
             headerVisible: false,
             rowHeight: 72,
             daysOfWeekHeight: 40,
+
+            // ⭐ [핵심 수정] 캘린더 제스처 범위를 좌우 스와이프만으로 제한합니다.
+            // 이렇게 하면 상하 스와이프는 부모인 SingleChildScrollView가 가져갑니다!
+            availableGestures: AvailableGestures.horizontalSwipe,
+
             onPageChanged: (focusedDay) {
               setState(() => _focusedDay = focusedDay);
               if (widget.onDayChanged != null) widget.onDayChanged!(_selectedDay, _focusedDay);

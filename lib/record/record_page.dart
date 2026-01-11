@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'record_data.dart' as record;
 import 'photo_grid_section.dart';
 import 'calendar_section.dart';
+import '../home/register_pet.dart';
 
 class RecordPage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -23,6 +24,36 @@ class _RecordPageState extends State<RecordPage> {
     super.initState();
     // 초기값으로 첫 번째 펫을 선택합니다.
     _selectedPetName = record.myPets.isNotEmpty ? record.myPets[0] : "";
+  }
+
+  // 반려동물 등록 다이얼로그를 여는 함수
+  void _openAddPetDialog() async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const PetRegistrationDialog(),
+      ),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      String newName = result['name'];
+      setState(() {
+        // 공통 데이터(record_data.dart)에 새 펫 정보 추가
+        record.myPets.add(newName);
+        record.petChecklists[newName] = [];
+        record.petProfiles[newName] = result;
+
+        // 새로 등록한 펫을 바로 선택 상태로 변경
+        _selectedPetName = newName;
+      });
+      // 상위 위젯(MainPage 등)의 배지나 상태를 갱신해야 할 때 호출
+      if (widget.onRefresh != null) widget.onRefresh!();
+    }
   }
 
   Future<void> _pickImage() async {
@@ -46,18 +77,18 @@ class _RecordPageState extends State<RecordPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
       body: SafeArea(
-        // 1. SingleChildScrollView가 캘린더와 사진 전체를 감싸서 어디서든 스크롤이 가능하게 합니다.
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 15, 20, 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 펫 선택 바
-              if (record.myPets.isNotEmpty)
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: record.myPets.map((name) {
+              // 펫 선택 바 + 추가 버튼
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    // 기존 펫 목록
+                    ...record.myPets.map((name) {
                       bool isSelected = _selectedPetName == name;
                       return Padding(
                         padding: const EdgeInsets.only(right: 10),
@@ -67,11 +98,15 @@ class _RecordPageState extends State<RecordPage> {
                         ),
                       );
                     }).toList(),
-                  ),
+
+                    // 2. 추가 버튼 배치
+                    _buildAddPetButton(),
+                  ],
                 ),
+              ),
               const SizedBox(height: 20),
 
-              // 2. 캘린더 섹션 (함께 스크롤됨)
+              // 캘린더 섹션
               CalendarSection(
                 selectedPetName: _selectedPetName,
                 onDayChanged: (selectedDay, focusedDay) {
@@ -84,7 +119,7 @@ class _RecordPageState extends State<RecordPage> {
               ),
               const SizedBox(height: 24),
 
-              // 3. 사진 그리드 섹션 (아래에 자연스럽게 이어짐)
+              // 사진 그리드 섹션
               PhotoGridSection(
                 selectedPetName: _selectedPetName,
                 focusedDay: _focusedDay,
@@ -97,6 +132,22 @@ class _RecordPageState extends State<RecordPage> {
         onPressed: _pickImage,
         backgroundColor: const Color(0xFF44403B),
         child: const Icon(Icons.camera_alt, color: Colors.white),
+      ),
+    );
+  }
+
+  // 추가(+) 버튼 위젯 (홈 탭과 디자인 통일)
+  Widget _buildAddPetButton() {
+    return GestureDetector(
+      onTap: _openAddPetDialog,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: const Color(0xFF44403B),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.add, color: Colors.white, size: 20),
       ),
     );
   }
