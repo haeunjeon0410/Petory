@@ -3,9 +3,11 @@ import 'dart:io';
 import 'register_pet.dart';
 import 'add_task_sheet.dart';
 import 'checklist_item.dart';
+import '../record/record_data.dart' as record;
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final VoidCallback? onRefresh;
+  const HomePage({super.key, this.onRefresh});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -13,18 +15,28 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   // --- 1. 상태 데이터 ---
-  List<String> myPets = ["맥스"];
-  int _selectedPetIndex = 0;
+  List<String> get myPets => record.myPets;
 
-  late Map<String, List<Map<String, dynamic>>> petChecklists;
-  late Map<String, Map<String, dynamic>> petProfiles;
+  Map<String, List<Map<String, dynamic>>> get petChecklists =>
+      record.petChecklists;
+  Map<String, Map<String, dynamic>> get petProfiles => record.petProfiles;
 
   @override
   void initState() {
     super.initState();
-    // 데이터 초기화
-    petChecklists = {
-      "맥스": [
+    // [수정] 데이터가 하나도 없을 때만 기본값을 넣어줍니다.
+    if (record.myPets.contains("맥스") && record.petProfiles["맥스"] == null) {
+      record.petProfiles["맥스"] = {
+        "name": "맥스",
+        "species": "골든 리트리버",
+        "age": "3",
+        "height": "60",
+        "weight": "32",
+        "gender": "male",
+        "isNeutered": true,
+      };
+
+      record.petChecklists["맥스"] = [
         {
           "title": "아침 식사",
           "time": "오전 8:00",
@@ -43,28 +55,17 @@ class _HomePageState extends State<HomePage> {
           "icon": Icons.pets,
           "isDone": false,
         },
-      ],
-    };
-    petProfiles = {
-      "맥스": {
-        "name": "맥스",
-        "species": "골든 리트리버",
-        "age": "3",
-        "height": "60",
-        "weight": "32",
-        "gender": "male",
-        "isNeutered": true,
-      },
-    };
+      ];
+    }
   }
 
   // --- 2. 로직 함수들 ---
 
   void _openTaskSheet(
-    String petName, {
-    int? editIndex,
-    Map<String, dynamic>? existingItem,
-  }) async {
+      String petName, {
+        int? editIndex,
+        Map<String, dynamic>? existingItem,
+      }) async {
     final result = await showDialog(
       context: context,
       barrierDismissible: true,
@@ -85,9 +86,9 @@ class _HomePageState extends State<HomePage> {
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         if (editIndex != null) {
-          petChecklists[petName]![editIndex] = result; // 수정
+          record.petChecklists[petName]![editIndex] = result; // 수정
         } else {
-          petChecklists[petName]!.add(result); // 추가
+          record.petChecklists[petName]!.add(result); // 추가
         }
       });
     }
@@ -161,14 +162,14 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: iconData is String
                                 ? Text(
-                                    iconData,
-                                    style: const TextStyle(fontSize: 30),
-                                  )
+                              iconData,
+                              style: const TextStyle(fontSize: 30),
+                            )
                                 : Icon(
-                                    iconData ?? Icons.check_circle_outline,
-                                    size: 30,
-                                    color: const Color(0xFF44403B),
-                                  ),
+                              iconData ?? Icons.check_circle_outline,
+                              size: 30,
+                              color: const Color(0xFF44403B),
+                            ),
                           ),
                           const SizedBox(width: 20),
                           Expanded(
@@ -254,7 +255,12 @@ class _HomePageState extends State<HomePage> {
   // --- 3. 화면 빌드 ---
   @override
   Widget build(BuildContext context) {
-    String currentPetName = myPets[_selectedPetIndex];
+    // _selectedPetIndex 대신 record.selectedPetName을 사용하도록 수정!
+    String currentPetName = record.selectedPetName;
+    if (currentPetName.isEmpty && record.myPets.isNotEmpty) {
+      currentPetName = record.myPets[0];
+    }
+
     List<Map<String, dynamic>> currentCheckList =
         petChecklists[currentPetName] ?? [];
     Map<String, dynamic> currentProfile = petProfiles[currentPetName] ?? {};
@@ -279,14 +285,21 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   ...List.generate(myPets.length, (index) {
+                    String petName = myPets[index];
+                    // ⭐ 수정: 로컬 인덱스 대신 공용 이름을 사용해 선택 여부 판단
+                    bool isSelected = record.selectedPetName == petName;
+
                     return Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedPetIndex = index),
-                        child: _buildPetSelectButton(
-                          myPets[index],
-                          _selectedPetIndex == index,
-                        ),
+                        onTap: () {
+                          setState(() {
+                            record.selectedPetName = petName; // ⭐ 공용 변수 업데이트
+                          });
+                          if (widget.onRefresh != null)
+                            widget.onRefresh!(); // ⭐ 메인 갱신
+                        },
+                        child: _buildPetSelectButton(petName, isSelected),
                       ),
                     );
                   }),
@@ -334,44 +347,44 @@ class _HomePageState extends State<HomePage> {
             currentCheckList.isEmpty
                 ? _buildEmptyState()
                 : ListView.separated(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: currentCheckList.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      return CheckListItem(
-                        item: currentCheckList[index],
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: currentCheckList.length,
+              separatorBuilder: (context, index) =>
+              const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return CheckListItem(
+                  item: currentCheckList[index],
 
-                        // [3] 완료/미완료 토글
-                        onToggle: () {
-                          setState(() {
-                            currentCheckList[index]['isDone'] =
-                                !currentCheckList[index]['isDone'];
-                          });
-                        },
+                  // [3] 완료/미완료 토글
+                  onToggle: () {
+                    setState(() {
+                      currentCheckList[index]['isDone'] =
+                      !currentCheckList[index]['isDone'];
+                    });
+                  },
 
-                        // [4] 상세 보기 (글씨 클릭)
-                        onTap: () => _showDetailSheet(currentCheckList[index]),
+                  // [4] 상세 보기 (글씨 클릭)
+                  onTap: () => _showDetailSheet(currentCheckList[index]),
 
-                        // [5] 핵심 수정: onMore 대신 onEdit/onDelete 연결
-                        onEdit: () {
-                          // 수정 팝업 열기
-                          _openTaskSheet(
-                            currentPetName,
-                            editIndex: index,
-                            existingItem: currentCheckList[index],
-                          );
-                        },
-                        onDelete: () {
-                          // 삭제 처리
-                          setState(() {
-                            petChecklists[currentPetName]!.removeAt(index);
-                          });
-                        },
-                      );
-                    },
-                  ),
+                  // [5] 핵심 수정: onMore 대신 onEdit/onDelete 연결
+                  onEdit: () {
+                    // 수정 팝업 열기
+                    _openTaskSheet(
+                      currentPetName,
+                      editIndex: index,
+                      existingItem: currentCheckList[index],
+                    );
+                  },
+                  onDelete: () {
+                    // 삭제 처리
+                    setState(() {
+                      petChecklists[currentPetName]!.removeAt(index);
+                    });
+                  },
+                );
+              },
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -401,17 +414,26 @@ class _HomePageState extends State<HomePage> {
             child: PetRegistrationDialog(existingData: profileData),
           ),
         );
+
         if (updatedData != null) {
           setState(() {
             String newName = updatedData['name'];
             if (newName != petName) {
-              int index = myPets.indexOf(petName);
-              myPets[index] = newName;
-              petChecklists[newName] = petChecklists.remove(petName) ?? [];
-              petProfiles[newName] = updatedData;
-              petProfiles.remove(petName);
+              int index = record.myPets.indexOf(petName);
+              record.myPets[index] = newName;
+
+              // 1. 여기서도 record.을 붙여서 명확하게 해주는 게 좋아!
+              record.petChecklists[newName] =
+                  record.petChecklists.remove(petName) ?? [];
+              record.petProfiles[newName] = updatedData;
+              record.petProfiles.remove(petName);
+
+              record.schedules[newName] =
+                  record.schedules.remove(petName) ?? {};
+              record.photos[newName] = record.photos.remove(petName) ?? {};
             } else {
-              petProfiles[petName] = updatedData;
+              // 2. [가장 중요한 수정!] 이 부분에 record.을 붙여줘
+              record.petProfiles[petName] = updatedData;
             }
           });
         }
@@ -441,12 +463,12 @@ class _HomePageState extends State<HomePage> {
                 shape: BoxShape.circle,
                 color: Colors.grey[200],
                 image:
-                    (profileData['image'] != null &&
-                        profileData['image'] is File)
+                (profileData['image'] != null &&
+                    profileData['image'] is File)
                     ? DecorationImage(
-                        image: FileImage(profileData['image']),
-                        fit: BoxFit.cover,
-                      )
+                  image: FileImage(profileData['image']),
+                  fit: BoxFit.cover,
+                )
                     : null,
               ),
               child: (profileData['image'] == null)
@@ -540,15 +562,15 @@ class _HomePageState extends State<HomePage> {
             child: const PetRegistrationDialog(), // (이름 변경 예정)
           ),
         );
-
         if (result != null && result is Map<String, dynamic>) {
           String newName = result['name'];
           setState(() {
-            myPets.add(newName);
-            petChecklists[newName] = [];
-            petProfiles[newName] = result;
-            _selectedPetIndex = myPets.length - 1;
+            record.myPets.add(newName);
+            record.petChecklists[newName] = [];
+            record.petProfiles[newName] = result;
+            record.selectedPetName = newName; // 새로 추가된 펫을 공용 변수에 저장
           });
+          if (widget.onRefresh != null) widget.onRefresh!(); // 메인 갱신
         }
       },
       child: Container(
