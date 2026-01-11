@@ -63,10 +63,10 @@ class _HomePageState extends State<HomePage> {
   // --- 2. 로직 함수들 ---
 
   void _openTaskSheet(
-    String petName, {
-    int? editIndex,
-    Map<String, dynamic>? existingItem,
-  }) async {
+      String petName, {
+        int? editIndex,
+        Map<String, dynamic>? existingItem,
+      }) async {
     final result = await showDialog(
       context: context,
       barrierDismissible: true,
@@ -164,14 +164,14 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: iconData is String
                                 ? Text(
-                                    iconData,
-                                    style: const TextStyle(fontSize: 30),
-                                  )
+                              iconData,
+                              style: const TextStyle(fontSize: 30),
+                            )
                                 : Icon(
-                                    iconData ?? Icons.check_circle_outline,
-                                    size: 30,
-                                    color: const Color(0xFF44403B),
-                                  ),
+                              iconData ?? Icons.check_circle_outline,
+                              size: 30,
+                              color: const Color(0xFF44403B),
+                            ),
                           ),
                           const SizedBox(width: 20),
                           Expanded(
@@ -463,44 +463,44 @@ class _HomePageState extends State<HomePage> {
             currentCheckList.isEmpty
                 ? _buildEmptyState()
                 : ListView.separated(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: currentCheckList.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      return CheckListItem(
-                        item: currentCheckList[index],
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: currentCheckList.length,
+              separatorBuilder: (context, index) =>
+              const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return CheckListItem(
+                  item: currentCheckList[index],
 
-                        // [3] 완료/미완료 토글
-                        onToggle: () {
-                          setState(() {
-                            currentCheckList[index]['isDone'] =
-                                !currentCheckList[index]['isDone'];
-                          });
-                        },
+                  // [3] 완료/미완료 토글
+                  onToggle: () {
+                    setState(() {
+                      currentCheckList[index]['isDone'] =
+                      !currentCheckList[index]['isDone'];
+                    });
+                  },
 
-                        // [4] 상세 보기 (글씨 클릭)
-                        onTap: () => _showDetailSheet(currentCheckList[index]),
+                  // [4] 상세 보기 (글씨 클릭)
+                  onTap: () => _showDetailSheet(currentCheckList[index]),
 
-                        // [5] 핵심 수정: onMore 대신 onEdit/onDelete 연결
-                        onEdit: () {
-                          // 수정 팝업 열기
-                          _openTaskSheet(
-                            currentPetId,
-                            editIndex: index,
-                            existingItem: currentCheckList[index],
-                          );
-                        },
-                        onDelete: () {
-                          // 삭제 처리
-                          setState(() {
-                            petChecklists[currentPetId]!.removeAt(index);
-                          });
-                        },
-                      );
-                    },
-                  ),
+                  // [5] 핵심 수정: onMore 대신 onEdit/onDelete 연결
+                  onEdit: () {
+                    // 수정 팝업 열기
+                    _openTaskSheet(
+                      currentPetName,
+                      editIndex: index,
+                      existingItem: currentCheckList[index],
+                    );
+                  },
+                  onDelete: () {
+                    // 삭제 처리
+                    setState(() {
+                      petChecklists[currentPetName]!.removeAt(index);
+                    });
+                  },
+                );
+              },
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -530,24 +530,66 @@ class _HomePageState extends State<HomePage> {
             spreadRadius: 2,
             offset: const Offset(0, 4),
           ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // 위쪽 정렬
-        children: [
-          // 1. 프로필 이미지
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey[200],
-              image:
-                  (profileData['image'] != null && profileData['image'] is File)
-                  ? DecorationImage(
-                      image: FileImage(profileData['image']),
-                      fit: BoxFit.cover,
-                    )
+        );
+
+        if (updatedData != null) {
+          setState(() {
+            String newName = updatedData['name'];
+            if (newName != petName) {
+              int index = record.myPets.indexOf(petName);
+              record.myPets[index] = newName;
+
+              // 1. 여기서도 record.을 붙여서 명확하게 해주는 게 좋아!
+              record.petChecklists[newName] =
+                  record.petChecklists.remove(petName) ?? [];
+              record.petProfiles[newName] = updatedData;
+              record.petProfiles.remove(petName);
+
+              record.schedules[newName] =
+                  record.schedules.remove(petName) ?? {};
+              record.photos[newName] = record.photos.remove(petName) ?? {};
+            } else {
+              // 2. [가장 중요한 수정!] 이 부분에 record.을 붙여줘
+              record.petProfiles[petName] = updatedData;
+            }
+          });
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.08),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // 프로필 이미지 (기존 코드 유지)
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[200],
+                image:
+                (profileData['image'] != null &&
+                    profileData['image'] is File)
+                    ? DecorationImage(
+                  image: FileImage(profileData['image']),
+                  fit: BoxFit.cover,
+                )
+                    : null,
+              ),
+              child: (profileData['image'] == null)
+                  ? Icon(Icons.pets, size: 40, color: Colors.grey[400])
                   : null,
             ),
             child: (profileData['image'] == null)
