@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'home/home.dart';
 import 'record/record_page.dart';
 import 'record/record_data.dart' as record;
-import 'nutrition.dart';
+import 'nutrition/nutrition_page.dart';
 import 'aichat.dart';
 
 void main() {
@@ -228,7 +228,7 @@ class _MainPageState extends State<MainPage> {
     final List<Widget> screens = [
       HomePage(onRefresh: () => setState(() {})),
       RecordPage(onRefresh: () => setState(() {})),
-      const NutritionPage(),
+      NutritionPage(onRefresh: () => setState(() {})),
       const AiPage(),
     ];
 

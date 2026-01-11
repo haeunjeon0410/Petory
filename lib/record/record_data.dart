@@ -58,6 +58,7 @@ Map<String, List<Map<String, dynamic>>> petChecklists = {
 
 final Map<String, Map<DateTime, List<Schedule>>> schedules = {};
 final Map<String, Map<DateTime, List<String>>> photos = {};
+Map<String, List<Map<String, dynamic>>> weightHistory = {};
 
 // 3. 알림 로직: 모든 펫의 일정을 순회하여 다음 24시간 알림을 가져오고 정렬합니다.
 List<Schedule> getActiveAlarmsForNext24Hours() {
