@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'record_data.dart' as record;
 import 'photo_grid_section.dart';
-import 'calendar_section.dart'; // 수정된 캘린더 섹션 임포트
+import 'calendar_section.dart';
 
 class RecordPage extends StatefulWidget {
-  const RecordPage({super.key});
+  final VoidCallback? onRefresh;
+
+  const RecordPage({super.key, this.onRefresh});
 
   @override
   State<RecordPage> createState() => _RecordPageState();
@@ -18,13 +20,13 @@ class _RecordPageState extends State<RecordPage> {
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
     if (image != null) {
       setState(() {
         final key = record.normalizeDate(_selectedDay);
         record.photos.putIfAbsent(key, () => []);
         record.photos[key]!.add(image.path);
       });
+      if (widget.onRefresh != null) widget.onRefresh!();
     }
   }
 
@@ -38,17 +40,16 @@ class _RecordPageState extends State<RecordPage> {
           child: Column(
             children: [
               const SizedBox(height: 16),
-              // 중복 코드를 제거하고 통합된 CalendarSection 사용
               CalendarSection(
                 onDayChanged: (selectedDay, focusedDay) {
                   setState(() {
                     _selectedDay = selectedDay;
                     _focusedDay = focusedDay;
                   });
+                  if (widget.onRefresh != null) widget.onRefresh!();
                 },
               ),
               const SizedBox(height: 24),
-              // 캘린더에서 바뀐 _focusedDay에 맞춰 사진 목록이 자동 업데이트됨
               PhotoGridSection(focusedDay: _focusedDay),
             ],
           ),

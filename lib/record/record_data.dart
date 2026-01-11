@@ -43,5 +43,12 @@ List<Schedule> getActiveAlarmsForNext24Hours() {
       }
     }
   });
+
+  active.sort((a, b) {
+    final aDt = DateTime(a.date.year, a.date.month, a.date.day, a.time!.hour, a.time!.minute);
+    final bDt = DateTime(b.date.year, b.date.month, b.date.day, b.time!.hour, b.time!.minute);
+    return aDt.compareTo(bDt);
+  });
+
   return active;
 }
