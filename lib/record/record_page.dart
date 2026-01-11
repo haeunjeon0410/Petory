@@ -17,6 +17,7 @@ class _RecordPageState extends State<RecordPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
+  // 펫 추가 다이얼로그 로직 (home.dart와 동일한 스타일 유지)
   void _openAddPetDialog() async {
     final result = await showDialog(
       context: context,
@@ -40,7 +41,6 @@ class _RecordPageState extends State<RecordPage> {
     }
   }
 
-  // ⭐ [수정] 사진 업로드 시 현재 선택된 날짜가 아닌 '오늘' 날짜로 저장되도록 변경
   Future<void> _pickImage() async {
     if (record.selectedPetName.isEmpty) return;
 
@@ -48,7 +48,6 @@ class _RecordPageState extends State<RecordPage> {
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
-      // 캘린더에서 선택한 _selectedDay 대신 오늘(DateTime.now())을 사용합니다.
       final today = DateTime.now();
       final key = record.normalizeDate(today);
 
@@ -58,7 +57,6 @@ class _RecordPageState extends State<RecordPage> {
         record.photos[record.selectedPetName]![key]!.add(image.path);
       });
 
-      // 사진 등록 후 다른 탭이나 UI가 갱신되도록 콜백 실행
       if (widget.onRefresh != null) widget.onRefresh!();
     }
   }
@@ -73,57 +71,61 @@ class _RecordPageState extends State<RecordPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 15, 20, 120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    ...record.myPets.map((name) {
-                      bool isSelected = record.selectedPetName == name;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              record.selectedPetName = name;
-                            });
-                            if (widget.onRefresh != null) widget.onRefresh!();
-                          },
-                          child: _buildPetSelectButton(name, isSelected),
-                        ),
-                      );
-                    }).toList(),
-                    _buildAddPetButton(),
-                  ],
-                ),
+      // [수정] home.dart와 위치를 맞추기 위해 SafeArea를 제거하고 padding을 조정함
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 15, 20, 120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- 상단 펫 선택 탭 (home.dart의 구조와 동일하게 수정) ---
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ...List.generate(record.myPets.length, (index) {
+                    String petName = record.myPets[index];
+                    bool isSelected = record.selectedPetName == petName;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            record.selectedPetName = petName;
+                          });
+                          if (widget.onRefresh != null) widget.onRefresh!();
+                        },
+                        child: _buildPetSelectButton(petName, isSelected),
+                      ),
+                    );
+                  }),
+                  _buildAddPetButton(),
+                ],
               ),
-              const SizedBox(height: 20),
-              CalendarSection(
-                selectedPetName: currentPetName,
-                onDayChanged: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay = focusedDay;
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-              // ⭐ PhotoGridSection 호출 시 onRefresh 인자를 전달하여
-              // 사진 삭제나 날짜 변경 시 화면이 즉시 새로고침되게 합니다.
-              PhotoGridSection(
-                selectedPetName: currentPetName,
-                focusedDay: _focusedDay,
-                onRefresh: () {
-                  setState(() {}); // 데이터 변경 감지 시 UI 갱신
-                },
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+
+            // 캘린더 섹션
+            CalendarSection(
+              selectedPetName: currentPetName,
+              onDayChanged: (selectedDay, focusedDay) {
+                setState(() {
+                  _selectedDay = selectedDay;
+                  _focusedDay = focusedDay;
+                });
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // 사진 그리드 섹션
+            PhotoGridSection(
+              selectedPetName: currentPetName,
+              focusedDay: _focusedDay,
+              onRefresh: () {
+                setState(() {});
+              },
+            ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -134,6 +136,7 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
+  // [수정] home.dart와 UI 디자인을 완전히 동일하게 맞춤
   Widget _buildAddPetButton() {
     return GestureDetector(
       onTap: _openAddPetDialog,
@@ -149,6 +152,7 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
+  // [수정] home.dart와 UI 디자인(폰트 크기, 색상 등)을 동일하게 맞춤
   Widget _buildPetSelectButton(String name, bool isSelected) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
