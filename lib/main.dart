@@ -55,7 +55,9 @@ class _MainPageState extends State<MainPage> {
 
             return Dialog(
               backgroundColor: const Color(0xFFF1F2ED),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
               insetPadding: const EdgeInsets.all(20),
               child: Container(
                 width: double.infinity,
@@ -69,140 +71,185 @@ class _MainPageState extends State<MainPage> {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.notifications_active_rounded, color: Color(0xFF44403B), size: 22),
+                            Icon(
+                              Icons.notifications_active_rounded,
+                              color: Color(0xFF44403B),
+                              size: 22,
+                            ),
                             SizedBox(width: 8),
-                            Text('알림창', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF44403B))),
+                            Text(
+                              '알림창',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF44403B),
+                              ),
+                            ),
                           ],
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close_rounded, color: Color(0xFF605A55), size: 22),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF605A55),
+                            size: 22,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
                     Expanded(
                       child: activeAlarms.isEmpty
-                          ? const Center(child: Text('알림이 없습니다.', style: TextStyle(color: Colors.grey)))
-                          : ListView.builder(
-                        itemCount: activeAlarms.length,
-                        itemBuilder: (context, index) {
-                          final s = activeAlarms[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Dismissible(
-                              key: UniqueKey(),
-                              direction: DismissDirection.endToStart,
-                              onDismissed: (direction) {
-                                setModalState(() {
-                                  final key = record.normalizeDate(s.date);
-                                  final petSchedules = record.schedules[s.petName];
-                                  if (petSchedules != null && petSchedules[key] != null) {
-                                    final list = petSchedules[key]!;
-                                    final idx = list.indexWhere((item) =>
-                                    item.title == s.title &&
-                                        item.time == s.time &&
-                                        record.normalizeDate(item.date) == key
-                                    );
-
-                                    if (idx != -1) {
-                                      list[idx] = record.Schedule(
-                                        petName: s.petName,
-                                        date: s.date,
-                                        title: s.title,
-                                        content: s.content,
-                                        color: s.color,
-                                        time: s.time,
-                                        alarm: false,
-                                      );
-                                    }
-                                  }
-                                });
-                                setState(() {});
-                              },
-                              background: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.redAccent,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.only(right: 20),
-                                child: const Icon(Icons.notifications_off_rounded, color: Colors.white),
+                          ? const Center(
+                              child: Text(
+                                '알림이 없습니다.',
+                                style: TextStyle(color: Colors.grey),
                               ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF44403B).withOpacity(0.08),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    )
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          color: s.color.withOpacity(0.2),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Icon(Icons.notifications_active_rounded, color: s.color, size: 24),
-                                        ),
+                            )
+                          : ListView.builder(
+                              itemCount: activeAlarms.length,
+                              itemBuilder: (context, index) {
+                                final s = activeAlarms[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Dismissible(
+                                    key: UniqueKey(),
+                                    direction: DismissDirection.endToStart,
+                                    onDismissed: (direction) {
+                                      setModalState(() {
+                                        final key = record.normalizeDate(
+                                          s.date,
+                                        );
+                                        final petSchedules =
+                                            record.schedules[s.petName];
+                                        if (petSchedules != null &&
+                                            petSchedules[key] != null) {
+                                          final list = petSchedules[key]!;
+                                          final idx = list.indexWhere(
+                                            (item) =>
+                                                item.title == s.title &&
+                                                item.time == s.time &&
+                                                record.normalizeDate(
+                                                      item.date,
+                                                    ) ==
+                                                    key,
+                                          );
+
+                                          if (idx != -1) {
+                                            list[idx] = record.Schedule(
+                                              petName: s.petName,
+                                              date: s.date,
+                                              title: s.title,
+                                              content: s.content,
+                                              color: s.color,
+                                              time: s.time,
+                                              alarm: false,
+                                            );
+                                          }
+                                        }
+                                      });
+                                      setState(() {});
+                                    },
+                                    background: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent,
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.only(right: 20),
+                                      child: const Icon(
+                                        Icons.notifications_off_rounded,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(
+                                              0xFF44403B,
+                                            ).withOpacity(0.08),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12.0),
+                                        child: Row(
                                           children: [
-                                            RichText(
-                                              text: TextSpan(
+                                            Container(
+                                              width: 48,
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                color: s.color.withOpacity(0.2),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons
+                                                      .notifications_active_rounded,
+                                                  color: s.color,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
-                                                  TextSpan(
-                                                    text: '${s.petName} ',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: s.color,
-                                                      fontWeight: FontWeight.bold,
+                                                  RichText(
+                                                    text: TextSpan(
+                                                      children: [
+                                                        TextSpan(
+                                                          text: '${s.petName} ',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: s.color,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                        TextSpan(
+                                                          text:
+                                                              '· ${DateFormat('M월 d일').format(s.date)} · ${s.time!.format(context)}',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: const Color(
+                                                              0xFF44403B,
+                                                            ).withOpacity(0.6),
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ),
-                                                  TextSpan(
-                                                    text: '· ${DateFormat('M월 d일').format(s.date)} · ${s.time!.format(context)}',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: const Color(0xFF44403B).withOpacity(0.6),
-                                                      fontWeight: FontWeight.w600,
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    s.title,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      fontSize: 15,
+                                                      color: Color(0xFF44403B),
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              s.title,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 15,
-                                                color: Color(0xFF44403B),
-                                              ),
-                                            ),
                                           ],
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                     ),
                   ],
                 ),
@@ -246,7 +293,14 @@ class _MainPageState extends State<MainPage> {
             onPressed: () {},
           ),
         ),
-        title: const Text('Petory', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 20)),
+        title: const Text(
+          'Petory',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+          ),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -261,7 +315,14 @@ class _MainPageState extends State<MainPage> {
                   Positioned(
                     right: 6,
                     top: 6,
-                    child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -277,7 +338,12 @@ class _MainPageState extends State<MainPage> {
             child: Row(
               children: List.generate(4, (index) {
                 final isSelected = _currentIndex == index;
-                final List<IconData> icons = [CupertinoIcons.house_fill, CupertinoIcons.photo_on_rectangle, CupertinoIcons.heart, CupertinoIcons.chat_bubble_text];
+                final List<IconData> icons = [
+                  CupertinoIcons.house_fill,
+                  CupertinoIcons.photo_on_rectangle,
+                  CupertinoIcons.heart,
+                  CupertinoIcons.chat_bubble_text,
+                ];
                 final List<String> labels = ['홈', '기록', '영양관리', 'AI 채팅'];
                 return Expanded(
                   child: GestureDetector(
@@ -285,15 +351,31 @@ class _MainPageState extends State<MainPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFF1F2ED) : Colors.transparent,
+                        color: isSelected
+                            ? const Color(0xFFF1F2ED)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(icons[index], size: 20, color: isSelected ? const Color(0xFF44403B) : Colors.grey),
+                          Icon(
+                            icons[index],
+                            size: 20,
+                            color: isSelected
+                                ? const Color(0xFF44403B)
+                                : Colors.grey,
+                          ),
                           const SizedBox(height: 2),
-                          Text(labels[index], style: TextStyle(fontSize: 9, color: isSelected ? const Color(0xFF44403B) : Colors.grey)),
+                          Text(
+                            labels[index],
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: isSelected
+                                  ? const Color(0xFF44403B)
+                                  : Colors.grey,
+                            ),
+                          ),
                         ],
                       ),
                     ),
