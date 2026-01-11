@@ -62,10 +62,10 @@ class _HomePageState extends State<HomePage> {
   // --- 2. 로직 함수들 ---
 
   void _openTaskSheet(
-    String petName, {
-    int? editIndex,
-    Map<String, dynamic>? existingItem,
-  }) async {
+      String petName, {
+        int? editIndex,
+        Map<String, dynamic>? existingItem,
+      }) async {
     final result = await showDialog(
       context: context,
       barrierDismissible: true,
@@ -162,14 +162,14 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: iconData is String
                                 ? Text(
-                                    iconData,
-                                    style: const TextStyle(fontSize: 30),
-                                  )
+                              iconData,
+                              style: const TextStyle(fontSize: 30),
+                            )
                                 : Icon(
-                                    iconData ?? Icons.check_circle_outline,
-                                    size: 30,
-                                    color: const Color(0xFF44403B),
-                                  ),
+                              iconData ?? Icons.check_circle_outline,
+                              size: 30,
+                              color: const Color(0xFF44403B),
+                            ),
                           ),
                           const SizedBox(width: 20),
                           Expanded(
@@ -347,44 +347,44 @@ class _HomePageState extends State<HomePage> {
             currentCheckList.isEmpty
                 ? _buildEmptyState()
                 : ListView.separated(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: currentCheckList.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      return CheckListItem(
-                        item: currentCheckList[index],
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: currentCheckList.length,
+              separatorBuilder: (context, index) =>
+              const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return CheckListItem(
+                  item: currentCheckList[index],
 
-                        // [3] 완료/미완료 토글
-                        onToggle: () {
-                          setState(() {
-                            currentCheckList[index]['isDone'] =
-                                !currentCheckList[index]['isDone'];
-                          });
-                        },
+                  // [3] 완료/미완료 토글
+                  onToggle: () {
+                    setState(() {
+                      currentCheckList[index]['isDone'] =
+                      !currentCheckList[index]['isDone'];
+                    });
+                  },
 
-                        // [4] 상세 보기 (글씨 클릭)
-                        onTap: () => _showDetailSheet(currentCheckList[index]),
+                  // [4] 상세 보기 (글씨 클릭)
+                  onTap: () => _showDetailSheet(currentCheckList[index]),
 
-                        // [5] 핵심 수정: onMore 대신 onEdit/onDelete 연결
-                        onEdit: () {
-                          // 수정 팝업 열기
-                          _openTaskSheet(
-                            currentPetName,
-                            editIndex: index,
-                            existingItem: currentCheckList[index],
-                          );
-                        },
-                        onDelete: () {
-                          // 삭제 처리
-                          setState(() {
-                            petChecklists[currentPetName]!.removeAt(index);
-                          });
-                        },
-                      );
-                    },
-                  ),
+                  // [5] 핵심 수정: onMore 대신 onEdit/onDelete 연결
+                  onEdit: () {
+                    // 수정 팝업 열기
+                    _openTaskSheet(
+                      currentPetName,
+                      editIndex: index,
+                      existingItem: currentCheckList[index],
+                    );
+                  },
+                  onDelete: () {
+                    // 삭제 처리
+                    setState(() {
+                      petChecklists[currentPetName]!.removeAt(index);
+                    });
+                  },
+                );
+              },
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -463,12 +463,12 @@ class _HomePageState extends State<HomePage> {
                 shape: BoxShape.circle,
                 color: Colors.grey[200],
                 image:
-                    (profileData['image'] != null &&
-                        profileData['image'] is File)
+                (profileData['image'] != null &&
+                    profileData['image'] is File)
                     ? DecorationImage(
-                        image: FileImage(profileData['image']),
-                        fit: BoxFit.cover,
-                      )
+                  image: FileImage(profileData['image']),
+                  fit: BoxFit.cover,
+                )
                     : null,
               ),
               child: (profileData['image'] == null)

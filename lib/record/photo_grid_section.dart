@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:table_calendar/table_calendar.dart'; // ⭐ 일관성을 위해 TableCalendar 사용
 import 'record_data.dart' as record;
 
 class PhotoGridSection extends StatelessWidget {
@@ -16,7 +16,7 @@ class PhotoGridSection extends StatelessWidget {
     required this.onRefresh,
   });
 
-  // ⭐ 날짜 수정 팝업: 토요일 파란색 적용
+  // ⭐ 하은아, 여기 디자인을 완전히 바꾼 컴팩트한 날짜 선택 창이야!
   void _showDatePicker(BuildContext context, DateTime oldDate, String path) {
     DateTime tempPickedDate = oldDate;
     final pointColor = const Color(0xFF44403B);
@@ -30,12 +30,13 @@ class PhotoGridSection extends StatelessWidget {
               backgroundColor: backgroundColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.85,
+                width: MediaQuery.of(context).size.width * 0.85, // 너비 조절
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 1. 헤더: 제목 왼쪽 정렬
                     Text(
                       '날짜 수정',
                       style: TextStyle(
@@ -46,6 +47,7 @@ class PhotoGridSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
+                    // 2. 컴팩트 캘린더 (기존 미감 유지)
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -67,6 +69,7 @@ class PhotoGridSection extends StatelessWidget {
                           rightChevronIcon: Icon(Icons.chevron_right, size: 20, color: pointColor),
                           headerPadding: const EdgeInsets.symmetric(vertical: 8),
                         ),
+                        // ⭐ 사이즈를 줄이기 위해 높이 조절
                         rowHeight: 40,
                         daysOfWeekHeight: 25,
                         calendarStyle: CalendarStyle(
@@ -74,35 +77,7 @@ class PhotoGridSection extends StatelessWidget {
                           todayTextStyle: TextStyle(color: pointColor, fontWeight: FontWeight.bold),
                           selectedDecoration: BoxDecoration(color: pointColor, shape: BoxShape.circle),
                           defaultTextStyle: const TextStyle(fontSize: 13),
-                          // weekendTextStyle는 기본적으로 일요일에 적용되도록 둡니다.
                           weekendTextStyle: const TextStyle(fontSize: 13, color: Colors.red),
-                        ),
-                        // ⭐ [핵심] 요일 및 날짜별 색상 커스텀
-                        calendarBuilders: CalendarBuilders(
-                          // 요일 헤더 (월~일) 색상 설정
-                          dowBuilder: (context, day) {
-                            if (day.weekday == DateTime.saturday) {
-                              return const Center(child: Text('토', style: TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.bold)));
-                            }
-                            if (day.weekday == DateTime.sunday) {
-                              return const Center(child: Text('일', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)));
-                            }
-                            return null;
-                          },
-                          // 일반 날짜 중 토요일 색상 설정
-                          defaultBuilder: (context, day, focusedDay) {
-                            if (day.weekday == DateTime.saturday) {
-                              return Center(child: Text('${day.day}', style: const TextStyle(color: Colors.blue, fontSize: 13)));
-                            }
-                            return null;
-                          },
-                          // 선택되지 않은 달의 토요일 색상 설정
-                          outsideBuilder: (context, day, focusedDay) {
-                            if (day.weekday == DateTime.saturday) {
-                              return Center(child: Text('${day.day}', style: TextStyle(color: Colors.blue.withOpacity(0.5), fontSize: 13)));
-                            }
-                            return null;
-                          },
                         ),
                         onDaySelected: (selectedDay, focusedDay) {
                           setDialogState(() => tempPickedDate = selectedDay);
@@ -111,9 +86,11 @@ class PhotoGridSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
+                    // 3. 하단 버튼 영역 (우측 정렬)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        // 취소 버튼
                         ElevatedButton(
                           onPressed: () => Navigator.pop(context),
                           style: ElevatedButton.styleFrom(
@@ -129,6 +106,7 @@ class PhotoGridSection extends StatelessWidget {
                           child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 8),
+                        // 변경 버튼
                         ElevatedButton(
                           onPressed: () {
                             final newDate = record.normalizeDate(tempPickedDate);
@@ -159,7 +137,7 @@ class PhotoGridSection extends StatelessWidget {
     );
   }
 
-  // 삭제 다이얼로그
+  // 삭제 다이얼로그 (이전과 동일한 스타일 유지)
   void _showDeleteDialog(BuildContext context, DateTime date, String path) {
     final pointColor = const Color(0xFF44403B);
     final backgroundColor = const Color(0xFFF1F2ED);
@@ -176,7 +154,7 @@ class PhotoGridSection extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('삭제', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: pointColor)),
+              Text('사진 삭제', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: pointColor)),
               const SizedBox(height: 20),
               const Text('정말 이 사진을 삭제할까요?', style: TextStyle(fontSize: 15, color: Color(0xFF605A55))),
               const SizedBox(height: 32),
@@ -242,7 +220,7 @@ class PhotoGridSection extends StatelessWidget {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 40),
-          child: Text('등록된 사진이 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 14)),
+          child: Text('이번 달에 등록된 사진이 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 14)),
         ),
       );
     }
@@ -302,7 +280,7 @@ class PhotoGridSection extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         DateFormat('yyyy년 M월 d일').format(entry.key),
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF44403B), fontWeight: FontWeight.w500),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF44403B), fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
