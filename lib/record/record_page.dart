@@ -4,6 +4,9 @@ import 'record_data.dart' as record;
 import 'photo_grid_section.dart';
 import 'calendar_section.dart';
 import '../home/sheets/pet_register_sheet.dart';
+import '../home/models/pet_model.dart';
+// [추가] 공통 탭바 위젯 import
+import '../home/widgets/pet_tab_bar.dart';
 
 class RecordPage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -17,8 +20,9 @@ class _RecordPageState extends State<RecordPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
+  // 1. 펫 추가 (ID 기반)
   void _openAddPetDialog() async {
-    final result = await showDialog(
+    final dynamic result = await showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
@@ -28,20 +32,34 @@ class _RecordPageState extends State<RecordPage> {
       ),
     );
 
-    if (result != null && result is Map<String, dynamic>) {
-      String newName = result['name'];
+    if (result != null && result is Pet) {
+      String newId = DateTime.now().millisecondsSinceEpoch.toString();
+
       setState(() {
-        record.myPets.add(newName);
-        record.petChecklists[newName] = [];
-        record.petProfiles[newName] = result;
-        record.selectedPetName = newName;
+        record.myPetIds.add(newId);
+        record.petProfiles[newId] = {
+          "name": result.name,
+          "type": result.type,
+          "species": result.species,
+          "age": result.age,
+          "height": result.height,
+          "weight": result.weight,
+          "gender": result.gender,
+          "isNeutered": result.isNeutered,
+          "imagePath": result.imageFile?.path ?? result.imageAsset,
+        };
+        record.petChecklists[newId] = [];
+        record.weightHistory[newId] = [];
+        record.selectedPetId = newId;
       });
+
       if (widget.onRefresh != null) widget.onRefresh!();
     }
   }
 
+  // 2. 사진 추가 (ID 기반)
   Future<void> _pickImage() async {
-    if (record.selectedPetName.isEmpty) return;
+    if (record.selectedPetId.isEmpty) return;
 
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
@@ -51,9 +69,9 @@ class _RecordPageState extends State<RecordPage> {
       final key = record.normalizeDate(today);
 
       setState(() {
-        record.photos.putIfAbsent(record.selectedPetName, () => {});
-        record.photos[record.selectedPetName]!.putIfAbsent(key, () => []);
-        record.photos[record.selectedPetName]![key]!.add(image.path);
+        record.photos.putIfAbsent(record.selectedPetId, () => {});
+        record.photos[record.selectedPetId]!.putIfAbsent(key, () => []);
+        record.photos[record.selectedPetId]![key]!.add(image.path);
       });
 
       if (widget.onRefresh != null) widget.onRefresh!();
@@ -62,10 +80,12 @@ class _RecordPageState extends State<RecordPage> {
 
   @override
   Widget build(BuildContext context) {
-    String currentPetName = record.selectedPetName;
-    if (currentPetName.isEmpty && record.myPets.isNotEmpty) {
-      currentPetName = record.myPets[0];
-      record.selectedPetName = currentPetName;
+    String currentPetId = record.selectedPetId;
+
+    if ((currentPetId.isEmpty || !record.myPetIds.contains(currentPetId)) &&
+        record.myPetIds.isNotEmpty) {
+      currentPetId = record.myPetIds[0];
+      record.selectedPetId = currentPetId;
     }
 
     return Scaffold(
@@ -75,37 +95,26 @@ class _RecordPageState extends State<RecordPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  ...List.generate(record.myPets.length, (index) {
-                    String petName = record.myPets[index];
-                    bool isSelected = record.selectedPetName == petName;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            record.selectedPetName = petName;
-                          });
-                          if (widget.onRefresh != null) widget.onRefresh!();
-                        },
-                        child: _buildPetSelectButton(petName, isSelected),
-                      ),
-                    );
-                  }),
-                  _buildAddPetButton(),
-                ],
-              ),
+            // [수정] 직접 구현했던 버튼 리스트를 삭제하고 PetTabBar로 교체
+            PetTabBar(
+              petIds: record.myPetIds,
+              petProfiles: record.petProfiles,
+              selectedId: currentPetId,
+              onTap: (id) {
+                setState(() {
+                  record.selectedPetId = id;
+                });
+                if (widget.onRefresh != null) widget.onRefresh!();
+              },
+              onAdd: _openAddPetDialog,
             ),
+
             const SizedBox(height: 20),
 
-            // ⭐ [수정 부분] onRefresh를 추가로 전달합니다.
+            // 캘린더 섹션
             CalendarSection(
-              selectedPetName: currentPetName,
-              onRefresh: widget.onRefresh, // 이 부분이 추가되었습니다!
+              selectedPetName: currentPetId,
+              onRefresh: widget.onRefresh,
               onDayChanged: (selectedDay, focusedDay) {
                 setState(() {
                   _selectedDay = selectedDay;
@@ -115,8 +124,9 @@ class _RecordPageState extends State<RecordPage> {
             ),
             const SizedBox(height: 24),
 
+            // 포토 그리드 섹션
             PhotoGridSection(
-              selectedPetName: currentPetName,
+              selectedPetName: currentPetId,
               focusedDay: _focusedDay,
               onRefresh: () {
                 setState(() {});
@@ -129,51 +139,6 @@ class _RecordPageState extends State<RecordPage> {
         onPressed: _pickImage,
         backgroundColor: const Color(0xFF44403B),
         child: const Icon(Icons.camera_alt, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildAddPetButton() {
-    return GestureDetector(
-      onTap: _openAddPetDialog,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: const Color(0xFF44403B),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: const Icon(Icons.add, color: Colors.white, size: 20),
-      ),
-    );
-  }
-
-  Widget _buildPetSelectButton(String name, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF44403B) : const Color(0xFFF1F2ED),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSelected ? Colors.transparent : const Color(0xFF44403B),
-          width: 1.5,
-        ),
-        boxShadow: [
-          if (isSelected)
-            BoxShadow(
-              color: const Color(0xFF44403B).withOpacity(0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-        ],
-      ),
-      child: Text(
-        name,
-        style: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF44403B),
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
-        ),
       ),
     );
   }

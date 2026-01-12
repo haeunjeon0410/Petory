@@ -3,6 +3,9 @@ import 'dart:math';
 import '../record/record_data.dart' as record;
 import '../home/sheets/pet_register_sheet.dart';
 import 'nutrition_components.dart';
+import '../home/models/pet_model.dart';
+// [추가] 공통 탭바 위젯 import
+import '../home/widgets/pet_tab_bar.dart';
 
 class NutritionPage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -17,9 +20,14 @@ class _NutritionPageState extends State<NutritionPage> {
   int _calculateDailyFood(Map<String, dynamic> profile) {
     double weight = double.tryParse(profile['weight']?.toString() ?? '0') ?? 0;
     if (weight <= 0) return 0;
-    bool isNeutered = profile['isNeutered'] ?? false;
+
+    bool isNeutered =
+        profile['isNeutered'] == true ||
+        profile['isNeutered'].toString() == 'true';
+    String type = profile['type']?.toString() ?? "강아지";
+
     double rer = 70 * pow(weight, 0.75).toDouble();
-    double k = (profile['type'] == "강아지")
+    double k = (type == "강아지")
         ? (isNeutered ? 1.6 : 1.8)
         : (isNeutered ? 1.2 : 1.4);
     if (_activityLevel == "저조") k -= 0.2;
@@ -27,24 +35,70 @@ class _NutritionPageState extends State<NutritionPage> {
     return (rer * k / 3.5).round();
   }
 
+  // 펫 추가 로직 (함수로 분리)
+  void _openAddPetDialog() async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => const Dialog(
+        backgroundColor: Colors.transparent,
+        child: PetRegisterSheet(),
+      ),
+    );
+
+    if (result != null && result is Pet) {
+      String newId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      setState(() {
+        record.myPetIds.add(newId);
+        record.petProfiles[newId] = {
+          "name": result.name,
+          "type": result.type,
+          "species": result.species,
+          "age": result.age,
+          "height": result.height,
+          "weight": result.weight,
+          "gender": result.gender,
+          "isNeutered": result.isNeutered,
+          "imagePath": result.imageFile?.path ?? result.imageAsset,
+        };
+        record.weightHistory[newId] = [];
+        if (record.petChecklists[newId] == null) {
+          record.petChecklists[newId] = [];
+        }
+
+        // 새 펫 선택
+        record.selectedPetId = newId;
+      });
+      if (widget.onRefresh != null) widget.onRefresh!();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    String currentPetName =
-        record.selectedPetName.isEmpty && record.myPets.isNotEmpty
-        ? record.myPets[0]
-        : record.selectedPetName;
+    // 1. 현재 선택된 ID 가져오기
+    String currentPetId = record.selectedPetId;
 
+    // 유효성 검사 및 기본값 설정
+    if ((currentPetId.isEmpty || !record.myPetIds.contains(currentPetId)) &&
+        record.myPetIds.isNotEmpty) {
+      currentPetId = record.myPetIds[0];
+      record.selectedPetId = currentPetId;
+    }
+
+    // 2. ID로 데이터 조회
     Map<String, dynamic> currentProfile =
-        record.petProfiles[currentPetName] ?? {};
+        record.petProfiles[currentPetId] ?? {};
     double profileWeight =
         double.tryParse(currentProfile['weight']?.toString() ?? '0') ?? 0;
+    String displayPetName = currentProfile['name']?.toString() ?? "이름 없음";
 
-    // 그래프 시작점 고정 로직 (index 0)
-    if (currentPetName.isNotEmpty) {
-      if (record.weightHistory[currentPetName] == null)
-        record.weightHistory[currentPetName] = [];
-      if (record.weightHistory[currentPetName]!.isEmpty && profileWeight > 0) {
-        record.weightHistory[currentPetName]!.add({
+    // 3. 그래프 데이터 초기화
+    if (currentPetId.isNotEmpty) {
+      if (record.weightHistory[currentPetId] == null) {
+        record.weightHistory[currentPetId] = [];
+      }
+      if (record.weightHistory[currentPetId]!.isEmpty && profileWeight > 0) {
+        record.weightHistory[currentPetId]!.add({
           "date": DateTime(2000, 1, 1),
           "weight": profileWeight,
         });
@@ -52,7 +106,7 @@ class _NutritionPageState extends State<NutritionPage> {
     }
 
     List<Map<String, dynamic>> history =
-        record.weightHistory[currentPetName] ?? [];
+        record.weightHistory[currentPetId] ?? [];
     double currentWeight = history.isNotEmpty
         ? (history.last['weight'] as double)
         : profileWeight;
@@ -65,8 +119,20 @@ class _NutritionPageState extends State<NutritionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildPetSelectionBar(),
+            // [수정] _buildPetSelectionBar 삭제 후 PetTabBar 사용
+            PetTabBar(
+              petIds: record.myPetIds,
+              petProfiles: record.petProfiles,
+              selectedId: currentPetId,
+              onTap: (id) {
+                setState(() => record.selectedPetId = id);
+                if (widget.onRefresh != null) widget.onRefresh!();
+              },
+              onAdd: _openAddPetDialog,
+            ),
+
             const SizedBox(height: 20),
+
             FoodCalculatorCard(
               profile: currentProfile,
               foodAmount: foodAmount,
@@ -75,7 +141,7 @@ class _NutritionPageState extends State<NutritionPage> {
             ),
             const SizedBox(height: 20),
             WeightTrendCard(
-              petName: currentPetName,
+              petName: displayPetName,
               history: history,
               currentWeight: currentWeight,
               onUpdate: () {
@@ -85,90 +151,6 @@ class _NutritionPageState extends State<NutritionPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildPetSelectionBar() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          ...record.myPets.map((petName) {
-            bool isSelected = record.selectedPetName == petName;
-            return Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => record.selectedPetName = petName);
-                  if (widget.onRefresh != null) widget.onRefresh!();
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF44403B)
-                        : const Color(0xFFF1F2ED),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: const Color(0xFF44403B),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      if (isSelected)
-                        BoxShadow(
-                          color: const Color(0xFF44403B).withOpacity(0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                    ],
-                  ),
-                  child: Text(
-                    petName,
-                    style: TextStyle(
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF44403B),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-          GestureDetector(
-            onTap: () async {
-              final result = await showDialog(
-                context: context,
-                builder: (context) => const Dialog(
-                  backgroundColor: Colors.transparent,
-                  child: PetRegisterSheet(),
-                ),
-              );
-              if (result != null) {
-                setState(() {
-                  record.myPets.add(result['name']);
-                  record.petProfiles[result['name']] = result;
-                  record.selectedPetName = result['name'];
-                });
-                if (widget.onRefresh != null) widget.onRefresh!();
-              }
-            },
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFF44403B),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(Icons.add, color: Colors.white, size: 20),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -337,7 +337,7 @@ class WeightTrendCard extends StatelessWidget {
               Expanded(
                 child: _buildTrendSummary(
                   "현재 체중",
-                  "${currentWeight.toStringAsFixed(1)} kg",
+                  "${currentWeight.toStringAsFixed(2)} kg",
                   const Color(0xFF44403B),
                 ),
               ),
@@ -345,7 +345,7 @@ class WeightTrendCard extends StatelessWidget {
               Expanded(
                 child: _buildTrendSummary(
                   "변화량",
-                  "${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(1)} kg",
+                  "${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(2)} kg",
                   const Color(0xFF2196F3),
                   isSkyBlue: true,
                 ),

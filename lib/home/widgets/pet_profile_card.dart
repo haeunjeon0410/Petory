@@ -88,9 +88,25 @@ class PetProfileCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    _buildTag("${pet.height} cm", Colors.blue),
+                    Builder(
+                      builder: (context) {
+                        // 문자열을 숫자로 변환 (실패 시 0.0)
+                        double hVal = double.tryParse(pet.height) ?? 0.0;
+                        // 소수점 1자리 고정
+                        String hText = hVal.toStringAsFixed(1);
+                        return _buildTag("$hText cm", Colors.blue);
+                      },
+                    ),
                     const SizedBox(width: 8),
-                    _buildTag("${pet.weight} kg", Colors.red),
+                    Builder(
+                      builder: (context) {
+                        // 문자열을 숫자로 변환
+                        double wVal = double.tryParse(pet.weight) ?? 0.0;
+                        // 소수점 2자리 고정
+                        String wText = wVal.toStringAsFixed(2);
+                        return _buildTag("$wText kg", Colors.red);
+                      },
+                    ),
                   ],
                 ),
               ],
