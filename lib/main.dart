@@ -277,7 +277,7 @@ class _MainPageState extends State<MainPage> {
       HomePage(onRefresh: () => setState(() {})),
       RecordPage(onRefresh: () => setState(() {})),
       NutritionPage(onRefresh: () => setState(() {})),
-      const AiChatPage(),
+      AiChatPage(onRefresh: () => setState(() {})),
     ];
 
     return Scaffold(

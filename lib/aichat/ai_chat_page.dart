@@ -3,9 +3,13 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../record/record_data.dart' as record;
 import 'ai_chat_models.dart';
 import 'ai_chat_widgets.dart';
+import '../home/widgets/pet_tab_bar.dart';
+import '../home/sheets/pet_register_sheet.dart';
+import '../home/models/pet_model.dart';
 
 class AiChatPage extends StatefulWidget {
-  const AiChatPage({super.key});
+  final VoidCallback? onRefresh;
+  const AiChatPage({super.key, this.onRefresh});
 
   @override
   State<AiChatPage> createState() => _AiChatPageState();
@@ -15,7 +19,9 @@ class _AiChatPageState extends State<AiChatPage> {
   late List<ChatMessage> _messages;
   late GenerativeModel _model;
   late ChatSession _chatSession;
-  bool _isLoading = false;
+
+  // 로딩 상태 변수는 이제 UI 표시용으로는 쓰지 않지만, 중복 전송 방지용으로 남겨둡니다.
+  bool _isSending = false;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -35,14 +41,12 @@ class _AiChatPageState extends State<AiChatPage> {
     final petId = record.selectedPetId;
     final profile = record.petProfiles[petId];
 
-    // 선택된 펫이 없거나 데이터가 비어있을 경우
     if (petId.isEmpty || profile == null) {
       return "반려동물 정보가 없습니다.";
     }
 
-    // 데이터 안전하게 가져오기 (null 처리)
     String name = profile['name'] ?? '이름 모름';
-    String type = profile['type'] ?? '반려동물'; // 강아지/고양이
+    String type = profile['type'] ?? '반려동물';
     String species = profile['species'] ?? '품종 모름';
     String age = profile['age'] ?? '?';
     String height = profile['height'] ?? '?';
@@ -50,7 +54,6 @@ class _AiChatPageState extends State<AiChatPage> {
     String gender = (profile['gender'] == 'male') ? '수컷' : '암컷';
     String neutered = (profile['isNeutered'] == true) ? '중성화 완료' : '중성화 안 함';
 
-    // AI에게 전달할 상세 정보 텍스트 생성
     return """
     - 이름: $name
     - 종류: $type ($species)
@@ -63,9 +66,53 @@ class _AiChatPageState extends State<AiChatPage> {
   String _getCurrentPetName() {
     final petId = record.selectedPetId;
     if (petId.isEmpty || record.petProfiles[petId] == null) {
-      return "반려동물"; // 기본값
+      return "반려동물";
     }
     return record.petProfiles[petId]!['name']?.toString() ?? "반려동물";
+  }
+
+  void _changePetProfile(String petId) {
+    setState(() {
+      record.selectedPetId = petId;
+      _resetChat();
+      _initGemini();
+    });
+  }
+
+  void _openAddPetDialog() async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => const Dialog(
+        backgroundColor: Colors.transparent,
+        child: PetRegisterSheet(),
+      ),
+    );
+
+    if (result != null && result is Pet) {
+      String newId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      setState(() {
+        record.myPetIds.add(newId);
+        record.petProfiles[newId] = {
+          "name": result.name,
+          "type": result.type,
+          "species": result.species,
+          "age": result.age,
+          "height": result.height,
+          "weight": result.weight,
+          "gender": result.gender,
+          "isNeutered": result.isNeutered,
+          "imagePath": result.imageFile?.path ?? result.imageAsset,
+        };
+        record.weightHistory[newId] = [];
+        if (record.petChecklists[newId] == null) {
+          record.petChecklists[newId] = [];
+        }
+
+        widget.onRefresh?.call();
+        _changePetProfile(newId);
+      });
+    }
   }
 
   void _initGemini() {
@@ -75,7 +122,7 @@ class _AiChatPageState extends State<AiChatPage> {
     String petContext = _getPetProfileContext();
 
     _model = GenerativeModel(
-      model: 'gemini-2.5-flash-lite',
+      model: 'gemini-1.5-flash-lite',
       apiKey: apiKey,
       systemInstruction: Content.system(
         "당신은 `$petName`의 전담 건강 매니저 '펫토리 닥터'입니다. "
@@ -94,11 +141,17 @@ class _AiChatPageState extends State<AiChatPage> {
     _chatSession = _model.startChat();
   }
 
-  // ⭐ 답변이 길어질 때 자동으로 화면을 끝까지 내리는 함수
+  // 스크롤 함수 (역순 리스트이므로 0.0이 맨 아래)
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   void _resetChat() {
@@ -107,40 +160,63 @@ class _AiChatPageState extends State<AiChatPage> {
         ChatMessage(
           text: "안녕하세요! 닥터 펫토리입니다.😊 어떻게 도와드릴까요?",
           isMe: false,
-          petName: "dr.펫토리", // ⭐ 이름을 '펫토리 닥터'로 변경
+          petName: "dr.펫토리",
           timestamp: DateTime.now(),
-          shouldAnimate: false, // ⭐ 첫 메시지는 타이핑 없이 고정
+          shouldAnimate: false,
         ),
       ];
     });
   }
 
+  // [핵심 변경] 메시지 전송 로직: 로딩바 없이 말풍선 즉시 추가
   Future<void> _handleSendMessage(String text) async {
+    if (_isSending) return; // 중복 전송 방지
+
     setState(() {
+      _isSending = true;
+      // 1. 내 메시지 추가
       _messages.add(
         ChatMessage(text: text, isMe: true, timestamp: DateTime.now()),
       );
-      _isLoading = true;
+
+      // 2. [핵심] AI의 "생각 중..." 말풍선을 미리 추가 (UI상 바로 뜸)
+      _messages.add(
+        ChatMessage(
+          text: "...", // 점 세 개로 타이핑 중임을 표시
+          isMe: false,
+          petName: "dr.펫토리",
+          timestamp: DateTime.now(),
+          shouldAnimate: false, // 점 세 개는 타이핑 효과 X
+        ),
+      );
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    // 스크롤을 맨 아래로 이동
+    _scrollToBottom();
 
     try {
       final response = await _chatSession.sendMessage(Content.text(text));
 
       setState(() {
+        // 3. 응답이 오면 마지막 메시지(점 세 개)를 제거하고 진짜 답변으로 교체
+        _messages.removeLast();
+
         _messages.add(
           ChatMessage(
             text: response.text ?? "죄송합니다. 답변을 생성하지 못했어요.",
             isMe: false,
             petName: "dr.펫토리",
             timestamp: DateTime.now(),
-            shouldAnimate: true,
+            shouldAnimate: true, // 진짜 답변은 타이핑 효과 O
           ),
         );
       });
+
+      // 답변 길이만큼 늘어난 화면을 위해 스크롤 보정
+      _scrollToBottom();
     } catch (e) {
       setState(() {
+        _messages.removeLast(); // 에러 시에도 점 세 개 제거
         _messages.add(
           ChatMessage(
             text: "연결 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
@@ -152,44 +228,58 @@ class _AiChatPageState extends State<AiChatPage> {
         );
       });
     } finally {
-      setState(() => _isLoading = false);
+      setState(() => _isSending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    String currentPetId = record.selectedPetId;
+    if ((currentPetId.isEmpty || !record.myPetIds.contains(currentPetId)) &&
+        record.myPetIds.isNotEmpty) {
+      currentPetId = record.myPetIds[0];
+      record.selectedPetId = currentPetId;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Padding(
+            padding: const EdgeInsets.only(
+              top: 15,
+              left: 20,
+              right: 20,
+              bottom: 10,
+            ),
+            child: PetTabBar(
+              petIds: record.myPetIds,
+              petProfiles: record.petProfiles,
+              selectedId: currentPetId,
+              onTap: (id) => _changePetProfile(id),
+              onAdd: _openAddPetDialog,
+            ),
+          ),
+
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
+              reverse: true,
               itemCount: _messages.length,
               itemBuilder: (context, index) {
+                final message = _messages[_messages.length - 1 - index];
                 return ChatBubble(
-                  key: ValueKey(_messages[index].timestamp),
-                  message: _messages[index],
-                  onTyping: _scrollToBottom, // ⭐ 타이핑 칠 때마다 스크롤 호출
+                  key: ValueKey(message.timestamp),
+                  message: message,
+                  onTyping: null,
                 );
               },
             ),
           ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF44403B),
-                  ),
-                ),
-              ),
-            ),
+
+          // [삭제됨] 로딩 인디케이터(CircularProgressIndicator) 코드 제거 완료
           ChatInputField(onSendMessage: _handleSendMessage),
         ],
       ),
