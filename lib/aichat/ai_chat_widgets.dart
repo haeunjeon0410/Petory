@@ -4,7 +4,9 @@ import 'ai_chat_models.dart';
 
 class ChatBubble extends StatefulWidget {
   final ChatMessage message;
-  const ChatBubble({super.key, required this.message});
+  final VoidCallback? onTyping;
+
+  const ChatBubble({super.key, required this.message, this.onTyping});
 
   @override
   State<ChatBubble> createState() => _ChatBubbleState();
@@ -18,8 +20,7 @@ class _ChatBubbleState extends State<ChatBubble> {
   @override
   void initState() {
     super.initState();
-    // 3. 내 메시지는 즉시 보여주고, AI 답변만 타이핑 효과 시작
-    if (widget.message.isMe) {
+    if (widget.message.isMe || !widget.message.shouldAnimate) {
       _displayedText = widget.message.text;
     } else {
       _startTyping();
@@ -28,18 +29,20 @@ class _ChatBubbleState extends State<ChatBubble> {
 
   @override
   void dispose() {
-    _timer?.cancel(); // 타이머 해제
+    _timer?.cancel();
     super.dispose();
   }
 
   void _startTyping() {
-    // 4. 30ms 간격으로 글자를 하나씩 추가
     _timer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
       if (_currentIndex < widget.message.text.length) {
-        setState(() {
-          _displayedText += widget.message.text[_currentIndex];
-          _currentIndex++;
-        });
+        if (mounted) {
+          setState(() {
+            _displayedText += widget.message.text[_currentIndex];
+            _currentIndex++;
+          });
+          widget.onTyping?.call(); // 글자가 추가될 때마다 부모의 스크롤 함수 호출
+        }
       } else {
         _timer?.cancel();
       }
@@ -67,8 +70,8 @@ class _ChatBubbleState extends State<ChatBubble> {
             children: [
               if (!widget.message.isMe)
                 Text(
-                    widget.message.petName ?? 'AI 도우미',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF44403B))
+                    widget.message.petName ?? '펫토리 닥터',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF44403B))
                 ),
               Container(
                 margin: const EdgeInsets.only(top: 4),
@@ -82,18 +85,10 @@ class _ChatBubbleState extends State<ChatBubble> {
                     bottomLeft: Radius.circular(widget.message.isMe ? 16 : 0),
                     bottomRight: Radius.circular(widget.message.isMe ? 0 : 16),
                   ),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
-                  ],
                 ),
-                // 5. 색상 하이라이트 없이 깔끔하게 텍스트 출력
                 child: Text(
                   _displayedText,
-                  style: TextStyle(
-                    color: widget.message.isMe ? Colors.white : Colors.black87,
-                    height: 1.4,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: widget.message.isMe ? Colors.white : Colors.black87, height: 1.4, fontSize: 14),
                 ),
               ),
             ],
@@ -104,6 +99,7 @@ class _ChatBubbleState extends State<ChatBubble> {
   }
 }
 
+// ⭐ 에러 해결: 누락되었던 ChatInputField 클래스 추가
 class ChatInputField extends StatefulWidget {
   final Function(String) onSendMessage;
   const ChatInputField({super.key, required this.onSendMessage});
