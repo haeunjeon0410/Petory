@@ -12,7 +12,8 @@ import 'sheets/task_editor_sheet.dart';
 import 'sheets/task_detail_dialog.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final VoidCallback? onRefresh;
+  const HomePage({super.key, this.onRefresh});
 
   @override
   State<HomePage> createState() => _HomePageState();
