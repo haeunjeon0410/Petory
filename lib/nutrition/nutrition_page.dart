@@ -19,9 +19,7 @@ class _NutritionPageState extends State<NutritionPage> {
     if (weight <= 0) return 0;
     bool isNeutered = profile['isNeutered'] ?? false;
     double rer = 70 * pow(weight, 0.75).toDouble();
-    double k = (profile['type'] == "강아지")
-        ? (isNeutered ? 1.6 : 1.8)
-        : (isNeutered ? 1.2 : 1.4);
+    double k = (profile['type'] == "강아지") ? (isNeutered ? 1.6 : 1.8) : (isNeutered ? 1.2 : 1.4);
     if (_activityLevel == "저조") k -= 0.2;
     if (_activityLevel == "활발") k += 0.4;
     return (rer * k / 3.5).round();
@@ -29,24 +27,30 @@ class _NutritionPageState extends State<NutritionPage> {
 
   @override
   Widget build(BuildContext context) {
-    String currentPetName =
-        record.selectedPetName.isEmpty && record.myPets.isNotEmpty
-        ? record.myPets[0]
-        : record.selectedPetName;
-    Map<String, dynamic> currentProfile =
-        record.petProfiles[currentPetName] ?? {};
-    double currentWeight =
-        double.tryParse(currentProfile['weight']?.toString() ?? '0') ?? 0;
-    int foodAmount = _calculateDailyFood(currentProfile);
-    List<Map<String, dynamic>> history =
-        record.weightHistory[currentPetName] ?? [];
+    String currentPetName = record.selectedPetName.isEmpty && record.myPets.isNotEmpty
+        ? record.myPets[0] : record.selectedPetName;
 
-    if (currentPetName.isNotEmpty && history.isEmpty && currentWeight > 0) {
-      record.weightHistory[currentPetName] = [
-        {"date": DateTime.now(), "weight": currentWeight},
-      ];
-      history = record.weightHistory[currentPetName]!;
+    Map<String, dynamic> currentProfile = record.petProfiles[currentPetName] ?? {};
+    double profileWeight = double.tryParse(currentProfile['weight']?.toString() ?? '0') ?? 0;
+
+    // 그래프 시작점 고정 로직
+    if (currentPetName.isNotEmpty) {
+      if (record.weightHistory[currentPetName] == null) {
+        record.weightHistory[currentPetName] = [];
+      }
+
+      // 시작점이 프로필 체중이 되도록 아주 먼 과거 날짜(예: 2000년)로 첫 데이터를 고정 삽입
+      if (record.weightHistory[currentPetName]!.isEmpty && profileWeight > 0) {
+        record.weightHistory[currentPetName]!.add({
+          "date": DateTime(2000, 1, 1),
+          "weight": profileWeight
+        });
+      }
     }
+
+    List<Map<String, dynamic>> history = record.weightHistory[currentPetName] ?? [];
+    double currentWeight = history.isNotEmpty ? (history.last['weight'] as double) : profileWeight;
+    int foodAmount = _calculateDailyFood(currentProfile);
 
     return Container(
       color: const Color(0xFFF1F2ED),
@@ -57,6 +61,7 @@ class _NutritionPageState extends State<NutritionPage> {
           children: [
             _buildPetSelectionBar(),
             const SizedBox(height: 20),
+            // undefined 에러 해결: 정확한 클래스 생성자 호출
             FoodCalculatorCard(
               profile: currentProfile,
               foodAmount: foodAmount,
@@ -94,38 +99,20 @@ class _NutritionPageState extends State<NutritionPage> {
                   if (widget.onRefresh != null) widget.onRefresh!();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF44403B)
-                        : const Color(0xFFF1F2ED),
+                    color: isSelected ? const Color(0xFF44403B) : const Color(0xFFF1F2ED),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: const Color(0xFF44403B),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      if (isSelected)
-                        BoxShadow(
-                          color: const Color(0xFF44403B).withOpacity(0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                    ],
+                    border: Border.all(color: const Color(0xFF44403B), width: 1.5),boxShadow: [
+                    if (isSelected)
+                      BoxShadow(
+                        color: const Color(0xFF44403B).withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                  ],
                   ),
-                  child: Text(
-                    petName,
-                    style: TextStyle(
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF44403B),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
+                  child: Text(petName, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFF44403B), fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ),
             );
@@ -134,10 +121,7 @@ class _NutritionPageState extends State<NutritionPage> {
             onTap: () async {
               final result = await showDialog(
                 context: context,
-                builder: (context) => const Dialog(
-                  backgroundColor: Colors.transparent,
-                  child: PetRegistrationDialog(),
-                ),
+                builder: (context) => const Dialog(backgroundColor: Colors.transparent, child: PetRegistrationDialog()),
               );
               if (result != null) {
                 setState(() {
@@ -149,12 +133,8 @@ class _NutritionPageState extends State<NutritionPage> {
               }
             },
             child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFF44403B),
-                borderRadius: BorderRadius.circular(18),
-              ),
+              width: 36, height: 36,
+              decoration: BoxDecoration(color: const Color(0xFF44403B), borderRadius: BorderRadius.circular(18)),
               child: const Icon(Icons.add, color: Colors.white, size: 20),
             ),
           ),

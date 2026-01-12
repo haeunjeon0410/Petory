@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../record/record_data.dart' as record;
 
 class NutritionDialogs {
+  // 기록 관리 (수정/삭제 선택) 다이얼로그
   static void showEditDeleteDialog({
     required BuildContext context,
     required String petName,
@@ -48,6 +50,7 @@ class NutritionDialogs {
     );
   }
 
+  // 체중 입력 다이얼로그
   static void showWeightDialog(BuildContext context, String petName, {int? editIndex, required VoidCallback onUpdate, DateTime? initialDate, String? initialWeight}) {
     TextEditingController weightController = TextEditingController(text: initialWeight);
     DateTime selectedDate = initialDate ?? DateTime.now();
@@ -63,8 +66,7 @@ class NutritionDialogs {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFFF1F2ED),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        title: Text(editIndex == null ? '체중 등록' : '날짜 수정',
+        title: Text(editIndex == null ? '체중 등록' : '기록 수정',
             style: const TextStyle(color: Color(0xFF44403B), fontSize: 16, fontWeight: FontWeight.bold)),
         content: SizedBox(
           width: 230,
@@ -94,6 +96,8 @@ class NutritionDialogs {
                 controller: weightController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(fontSize: 13),
+                // 소수점 2자리까지만 입력 가능하도록 제한
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
                 decoration: InputDecoration(
                   hintText: "체중을 입력해주세요",
                   hintStyle: const TextStyle(color: Color(0xFFA8A29E), fontSize: 12),
@@ -110,8 +114,9 @@ class NutritionDialogs {
         actions: [
           _buildSmallButton(label: "취소", isPrimary: false, onTap: () => Navigator.pop(context)),
           _buildSmallButton(label: editIndex == null ? "확인" : "변경", isPrimary: true, onTap: () {
-            if (weightController.text.isNotEmpty) {
-              _saveData(petName, selectedDate, weightController.text, editIndex, onUpdate, context);
+            final input = weightController.text;
+            if (input.isNotEmpty && double.tryParse(input) != null) {
+              _saveData(petName, selectedDate, input, editIndex, onUpdate, context);
             }
           }),
         ],
@@ -119,10 +124,9 @@ class NutritionDialogs {
     );
   }
 
+  // 날짜 선택 달력 다이얼로그
   static void _showCalendarPicker(BuildContext context, String petName, {int? editIndex, required VoidCallback onUpdate, required DateTime currentDate, required String currentWeight}) {
     DateTime tempDate = currentDate;
-    final pointColor = const Color(0xFF44403B);
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -130,7 +134,6 @@ class NutritionDialogs {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFFF1F2ED),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           title: const Text('날짜 선택', style: TextStyle(color: Color(0xFF44403B), fontSize: 16, fontWeight: FontWeight.bold)),
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.85,
@@ -147,26 +150,14 @@ class NutritionDialogs {
                     lastDay: DateTime.now(),
                     focusedDay: tempDate,
                     selectedDayPredicate: (day) => isSameDay(tempDate, day),
-                    sixWeekMonthsEnforced: true, // ⭐ 주차에 상관없이 6주로 높이 고정
-                    headerStyle: HeaderStyle(
-                      formatButtonVisible: false,
-                      titleCentered: true,
-                      titleTextStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: pointColor),
-                      leftChevronIcon: Icon(Icons.chevron_left, size: 20, color: pointColor),
-                      rightChevronIcon: Icon(Icons.chevron_right, size: 20, color: pointColor),
+                    headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+                    calendarStyle: const CalendarStyle(
+                      selectedDecoration: BoxDecoration(color: Color(0xFF44403B), shape: BoxShape.circle),
+                      // 오늘 날짜 디자인: 연한 회색
+                      todayDecoration: BoxDecoration(color: Color(0xFFE7E5E4), shape: BoxShape.circle),
+                      todayTextStyle: TextStyle(color: Color(0xFF44403B), fontWeight: FontWeight.bold, fontSize: 13),
                     ),
-                    rowHeight: 48,
-                    daysOfWeekHeight: 35,
-                    calendarStyle: CalendarStyle(
-                      selectedDecoration: BoxDecoration(color: pointColor, shape: BoxShape.circle),
-                      cellMargin: const EdgeInsets.all(6),
-                      selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                      todayDecoration: BoxDecoration(color: pointColor.withOpacity(0.1), shape: BoxShape.circle),
-                      todayTextStyle: TextStyle(color: pointColor, fontWeight: FontWeight.bold, fontSize: 13),
-                      defaultTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF44403B)),
-                      weekendTextStyle: const TextStyle(fontSize: 13),
-                      outsideDaysVisible: false,
-                    ),
+                    // 토요일(파랑), 일요일(빨강) 색상 수정
                     calendarBuilders: CalendarBuilders(
                       dowBuilder: (context, day) {
                         if (day.weekday == DateTime.sunday) return const Center(child: Text('일', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500)));
@@ -179,9 +170,7 @@ class NutritionDialogs {
                         return null;
                       },
                     ),
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setDialogState(() => tempDate = selectedDay);
-                    },
+                    onDaySelected: (selectedDay, focusedDay) => setDialogState(() => tempDate = selectedDay),
                   ),
                 ),
               ],
@@ -205,13 +194,29 @@ class NutritionDialogs {
 
   static void _saveData(String petName, DateTime date, String weightStr, int? editIndex, VoidCallback onUpdate, BuildContext context) {
     double newWeight = double.tryParse(weightStr) ?? 0.0;
-    if (editIndex == null) {
-      record.weightHistory[petName]!.add({"date": date, "weight": newWeight});
-    } else {
-      record.weightHistory[petName]![editIndex] = {"date": date, "weight": newWeight};
+    List<Map<String, dynamic>> history = record.weightHistory[petName] ?? [];
+
+    // 동일한 날짜 중복 추가 금지 (수정 시에는 본인 인덱스 제외)
+    bool isDuplicate = history.asMap().entries.any((entry) {
+      if (editIndex != null && entry.key == editIndex) return false;
+      return isSameDay(entry.value['date'], date);
+    });
+
+    if (isDuplicate) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("해당 날짜에 이미 기록이 있습니다.")));
+      return;
     }
-    record.weightHistory[petName]!.sort((a, b) => a['date'].compareTo(b['date']));
-    record.petProfiles[petName]?['weight'] = record.weightHistory[petName]!.last['weight'].toString();
+
+    if (editIndex == null) {
+      history.add({"date": date, "weight": newWeight});
+    } else {
+      history[editIndex] = {"date": date, "weight": newWeight};
+    }
+
+    // 날짜별 재정렬 (꺾은선 그래프 꼬임 방지)
+    history.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+    record.petProfiles[petName]?['weight'] = history.last['weight'].toString();
+
     onUpdate();
     Navigator.pop(context);
   }
@@ -226,14 +231,7 @@ class NutritionDialogs {
           borderRadius: BorderRadius.circular(12),
           border: isPrimary ? null : Border.all(color: const Color(0xFFE7E5E4)),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isPrimary ? Colors.white : const Color(0xFF605A55),
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
-        ),
+        child: Text(label, style: TextStyle(color: isPrimary ? Colors.white : const Color(0xFF605A55), fontWeight: FontWeight.bold, fontSize: 12)),
       ),
     );
   }

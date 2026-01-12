@@ -43,10 +43,10 @@ class PhotoGridSection extends StatelessWidget {
                   child: TableCalendar(
                     locale: 'ko_KR',
                     firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.utc(2035, 12, 31),
+                    lastDay: DateTime.now(), // ⭐ 미래 날짜 선택을 막기 위해 오늘로 설정
                     focusedDay: tempPickedDate,
                     selectedDayPredicate: (day) => isSameDay(tempPickedDate, day),
-                    sixWeekMonthsEnforced: true, // ⭐ 높이 고정 설정 추가
+                    sixWeekMonthsEnforced: true,
                     headerStyle: HeaderStyle(
                       formatButtonVisible: false,
                       titleCentered: true,
