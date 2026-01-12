@@ -6,6 +6,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http; // [추가] API 통신
 import 'package:url_launcher/url_launcher.dart'; // [추가] 전화 걸기
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 import 'home/home_page.dart';
 import 'record/record_page.dart';
@@ -476,32 +478,107 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
   }
 
   Future<void> _fetchHospitals() async {
-    // ⚠ [중요] 네이버 개발자 센터에서 발급받은 키를 여기에 넣으세요
-    const String clientId = "LxZobpd8acNKliAp598K";
-    const String clientSecret = "YzsiQVnnCB";
-
-    // 동물병원 검색 (display=5: 5개만 가져오기)
-    final String url =
-        "https://openapi.naver.com/v1/search/local.json?query=동물병원&display=5&sort=random";
+    const String clientId = "LxZobpd8acNKliAp598K"; // [주의] 발급받은 ID 입력
+    const String clientSecret = "YzsiQVnnCB"; // [주의] 발급받은 Secret 입력
 
     try {
+      // 1. 위치 권한 확인 및 요청
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _loadDummyData();
+          return;
+        }
+      }
+
+      // 2. 현재 내 GPS 좌표 가져오기
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      // 3. 좌표를 주소(시/구)로 변환
+      String queryLocation = "동물병원"; // 기본값
+
+      try {
+        // [수정 핵심 1] timeout 설정 (3초 안에 응답 없으면 취소) 및 한국어 설정
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        ).timeout(const Duration(seconds: 3));
+
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          // 행정구역(시/도) + 시/군/구 조합
+          String administrative = place.administrativeArea ?? ""; // 예: 대전광역시
+          String locality = place.locality ?? ""; // 예: 유성구 (또는 시)
+          String subLocality =
+              place.subLocality ?? ""; // 예: 유성구 (locality가 비었을 경우)
+          String thoroughfare = place.thoroughfare ?? ""; // 예: 궁동 (동 단위)
+
+          // 구글 지오코더는 한국 주소 체계가 복잡하여 locality와 subLocality가 섞일 때가 많음
+          // 최대한 겹치지 않게 조합
+          String locationString = "";
+
+          if (administrative.isNotEmpty) locationString += "$administrative ";
+
+          // locality와 subLocality 중 있는 것을 사용
+          if (locality.isNotEmpty) {
+            locationString += "$locality ";
+          } else if (subLocality.isNotEmpty) {
+            locationString += "$subLocality ";
+          }
+
+          // 동 단위까지 있으면 정확도 상승
+          if (thoroughfare.isNotEmpty) locationString += "$thoroughfare ";
+
+          if (locationString.trim().isNotEmpty) {
+            queryLocation = "${locationString.trim()} 동물병원";
+          }
+        }
+      } catch (e) {
+        debugPrint("주소 변환 실패(시간 초과 등): $e");
+        // [수정 핵심 3] 주소 변환 실패 시 '내 주변' 검색을 위한 차선책
+        // 여기서는 간단히 '동물병원'으로 검색되지만,
+        // 실제로는 사용자에게 '주소를 찾을 수 없어 기본 검색합니다' 등을 알릴 수 있음.
+      }
+
+      debugPrint("최종 검색어: $queryLocation");
+
+      // 4. 네이버 API 호출
+      final Uri uri = Uri.https('openapi.naver.com', '/v1/search/local.json', {
+        'query': queryLocation,
+        'display': '5',
+        'sort': 'random', // random으로 해야 유사도(검색어 포함) 순으로 나옴
+      });
+
       final response = await http.get(
-        Uri.parse(url),
+        uri,
         headers: {
           "X-Naver-Client-Id": clientId,
           "X-Naver-Client-Secret": clientSecret,
         },
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> items = data['items'];
+
+        if (items.isEmpty) {
+          // 검색 결과가 없으면 더미 데이터라도 보여줌
+          _loadDummyData();
+          return;
+        }
 
         List<Hospital> fetchedHospitals = items
             .map((item) => Hospital.fromJson(item))
             .toList();
 
-        // [정렬 로직] 거리순 정렬 (오름차순: 가까운 순서)
+        // 거리순 정렬 (API가 거리를 안 주므로 랜덤 값이지만 정렬하는 척)
         fetchedHospitals.sort((a, b) => a.distance.compareTo(b.distance));
 
         setState(() {
@@ -509,12 +586,12 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
           isLoading = false;
         });
       } else {
-        // API 에러 시 더미 데이터
+        debugPrint("API 호출 오류: ${response.statusCode}");
         _loadDummyData();
       }
     } catch (e) {
-      print("Error: $e");
-      _loadDummyData();
+      debugPrint("전체 로직 에러: $e");
+      if (mounted) _loadDummyData();
     }
   }
 

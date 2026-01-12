@@ -146,7 +146,7 @@ class _AiChatPageState extends State<AiChatPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          0.0,
+          _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -266,10 +266,9 @@ class _AiChatPageState extends State<AiChatPage> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              reverse: true,
               itemCount: _messages.length,
               itemBuilder: (context, index) {
-                final message = _messages[_messages.length - 1 - index];
+                final message = _messages[index];
                 return ChatBubble(
                   key: ValueKey(message.timestamp),
                   message: message,
