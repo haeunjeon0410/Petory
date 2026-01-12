@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../record/record_data.dart' as record;
 import 'ai_chat_models.dart';
 import 'ai_chat_widgets.dart';
 
@@ -30,6 +31,35 @@ class _AiChatPageState extends State<AiChatPage> {
     super.dispose();
   }
 
+  String _getPetProfileContext() {
+    final petId = record.selectedPetId;
+    final profile = record.petProfiles[petId];
+
+    // 선택된 펫이 없거나 데이터가 비어있을 경우
+    if (petId.isEmpty || profile == null) {
+      return "반려동물 정보가 없습니다.";
+    }
+
+    // 데이터 안전하게 가져오기 (null 처리)
+    String name = profile['name'] ?? '이름 모름';
+    String type = profile['type'] ?? '반려동물'; // 강아지/고양이
+    String species = profile['species'] ?? '품종 모름';
+    String age = profile['age'] ?? '?';
+    String height = profile['height'] ?? '?';
+    String weight = profile['weight'] ?? '?';
+    String gender = (profile['gender'] == 'male') ? '수컷' : '암컷';
+    String neutered = (profile['isNeutered'] == true) ? '중성화 완료' : '중성화 안 함';
+
+    // AI에게 전달할 상세 정보 텍스트 생성
+    return """
+    - 이름: $name
+    - 종류: $type ($species)
+    - 나이: ${age}살
+    - 신체 정보: 키 ${height}cm, 몸무게 ${weight}kg
+    - 성별: $gender ($neutered)
+    """;
+  }
+
   String _getCurrentPetName() {
     final petId = record.selectedPetId;
     if (petId.isEmpty || record.petProfiles[petId] == null) {
@@ -42,13 +72,23 @@ class _AiChatPageState extends State<AiChatPage> {
     const String apiKey = 'AIzaSyAst0clfoDv3fJgAyXs5oIS0KtQyD3CvF4';
 
     String petName = _getCurrentPetName();
+    String petContext = _getPetProfileContext();
 
-    const String apiKey = 'YOUR_API_KEY_HERE'; // 하은이의 API 키를 넣어줘!
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash-lite',
       apiKey: apiKey,
       systemInstruction: Content.system(
-        "당신은 전담 건강 매니저 '펫토리 닥터'입니다. 보호자님께 친절하고 짧게 핵심만 답변하세요.",
+        "당신은 `$petName`의 전담 건강 매니저 '펫토리 닥터'입니다. "
+        "다음 원칙을 지켜 답변하세요. "
+        "1. 호칭: 사용자를 반드시 `보호자님`이라고 부르세요. "
+        "2. 요약 중심: 서론은 생략하고 가장 중요한 핵심 결론부터 바로 말하세요. "
+        "3. 구조화: 불렛 포인트(-)를 사용하여 행동 요령을 최대 3까지만 제시하세요. "
+        "4. 길이 제한: 전체 답변은 150자 이내, 3~4줄 정도로 짧게 유지하세요. "
+        "5. 응급 안내: 위급 상황 시 맨 앞에 [🚨] 표시를 붙이고 즉시 병원 방문을 권고하세요. "
+        "6. 금지 사항: 텍스트에 ** 기호(마크다운 굵기)를 절대 적지 마세요. "
+        "7. 센스 있는 마무리: 답변 끝에 보호자님이 대답할 수 있는 짧은 질문이나 관련 제안을 한 줄 추가하세요."
+        "8. 말투 : 이모티콘을 적절히 사용해 친절하게 한국어로 답변하세요."
+        "9. 반려동물 상세정보: $petContext",
       ),
     );
     _chatSession = _model.startChat();
@@ -129,8 +169,6 @@ class _AiChatPageState extends State<AiChatPage> {
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 return ChatBubble(
-                  key: ValueKey(_messages[index].timestamp),
-                  message: _messages[index],
                   key: ValueKey(_messages[index].timestamp),
                   message: _messages[index],
                   onTyping: _scrollToBottom, // ⭐ 타이핑 칠 때마다 스크롤 호출
