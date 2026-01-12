@@ -39,6 +39,8 @@ dependencies:
   emoji_picker_flutter: ^4.4.0
   flutter_colorpicker: ^1.0.3
   google_generative_ai: ^0.4.7
+  http: ^1.2.0
+  url_launcher: ^6.2.0
 
 dev_dependencies:
   flutter_test:

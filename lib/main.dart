@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:math'; // 거리 계산 시뮬레이션용
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http; // [추가] API 통신
+import 'package:url_launcher/url_launcher.dart'; // [추가] 전화 걸기
+
 import 'home/home_page.dart';
 import 'record/record_page.dart';
 import 'record/record_data.dart' as record;
@@ -32,6 +37,40 @@ class PetoryApp extends StatelessWidget {
   }
 }
 
+// [추가] 병원 데이터 모델
+class Hospital {
+  final String name;
+  final String address; // 진료 시간 대신 주소나 설명으로 활용
+  final String phoneNumber;
+  final double distance; // 거리 (km)
+
+  Hospital({
+    required this.name,
+    required this.address,
+    required this.phoneNumber,
+    required this.distance,
+  });
+
+  factory Hospital.fromJson(Map<String, dynamic> json) {
+    // HTML 태그 제거 (예: <b>병원</b>)
+    String cleanTitle = json['title'].toString().replaceAll(
+      RegExp(r'<[^>]*>'),
+      '',
+    );
+
+    return Hospital(
+      name: cleanTitle,
+      address: json['roadAddress'] ?? json['address'] ?? "정보 없음",
+      phoneNumber: json['telephone'] ?? "번호 없음",
+      // *참고: API가 거리를 주지 않으므로, 여기서는 0.5~5.0km 사이 랜덤 값으로 시뮬레이션합니다.
+      // 실제로는 내 GPS 좌표와 mapx, mapy 좌표를 계산해야 합니다.
+      distance: double.parse(
+        (0.5 + Random().nextDouble() * 4.5).toStringAsFixed(1),
+      ),
+    );
+  }
+}
+
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -43,6 +82,15 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   bool _isBadgeRead = false;
   int _lastNotificationCount = 0;
+
+  void _showEmergencyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return const EmergencyDialog(); // 별도 위젯으로 분리
+      },
+    );
+  }
 
   void _showNotificationDialog(BuildContext context) {
     setState(() => _isBadgeRead = true);
@@ -305,26 +353,44 @@ class _MainPageState extends State<MainPage> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Stack(
-              clipBehavior: Clip.none,
+            child: Row(
+              // Stack 대신 Row로 감싸서 버튼 나열
               children: [
+                // [추가] 1. 비상 연락망 버튼 (왼쪽)
                 IconButton(
-                  icon: const Icon(CupertinoIcons.bell, color: Colors.black),
-                  onPressed: () => _showNotificationDialog(context),
-                ),
-                if (showRedDot)
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+                  icon: const Icon(
+                    Icons.emergency_outlined,
+                    color: Colors.redAccent,
                   ),
+                  onPressed: () => _showEmergencyDialog(context),
+                ),
+
+                // 2. 기존 알림 버튼 (오른쪽)
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        CupertinoIcons.bell,
+                        color: Colors.black,
+                      ),
+                      onPressed: () => _showNotificationDialog(context),
+                    ),
+                    if (showRedDot)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -385,6 +451,267 @@ class _MainPageState extends State<MainPage> {
               }),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// [추가] 비상 연락망 다이얼로그 위젯 (별도 분리)
+class EmergencyDialog extends StatefulWidget {
+  const EmergencyDialog({super.key});
+
+  @override
+  State<EmergencyDialog> createState() => _EmergencyDialogState();
+}
+
+class _EmergencyDialogState extends State<EmergencyDialog> {
+  List<Hospital> hospitals = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHospitals();
+  }
+
+  Future<void> _fetchHospitals() async {
+    // ⚠ [중요] 네이버 개발자 센터에서 발급받은 키를 여기에 넣으세요
+    const String clientId = "LxZobpd8acNKliAp598K";
+    const String clientSecret = "YzsiQVnnCB";
+
+    // 동물병원 검색 (display=5: 5개만 가져오기)
+    final String url =
+        "https://openapi.naver.com/v1/search/local.json?query=동물병원&display=5&sort=random";
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          "X-Naver-Client-Id": clientId,
+          "X-Naver-Client-Secret": clientSecret,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> items = data['items'];
+
+        List<Hospital> fetchedHospitals = items
+            .map((item) => Hospital.fromJson(item))
+            .toList();
+
+        // [정렬 로직] 거리순 정렬 (오름차순: 가까운 순서)
+        fetchedHospitals.sort((a, b) => a.distance.compareTo(b.distance));
+
+        setState(() {
+          hospitals = fetchedHospitals;
+          isLoading = false;
+        });
+      } else {
+        // API 에러 시 더미 데이터
+        _loadDummyData();
+      }
+    } catch (e) {
+      print("Error: $e");
+      _loadDummyData();
+    }
+  }
+
+  void _loadDummyData() {
+    List<Hospital> dummies = [
+      Hospital(
+        name: "펫 응급센터",
+        address: "24시간 연중무휴",
+        phoneNumber: "02-987-6543",
+        distance: 0.8,
+      ),
+      Hospital(
+        name: "김수진 수의사",
+        address: "평일 09:00-20:00",
+        phoneNumber: "02-123-4567",
+        distance: 1.2,
+      ),
+      Hospital(
+        name: "박민수 수의사",
+        address: "평일 10:00-19:00",
+        phoneNumber: "02-456-7890",
+        distance: 2.5,
+      ),
+    ];
+    // 더미 데이터도 정렬
+    dummies.sort((a, b) => a.distance.compareTo(b.distance));
+
+    setState(() {
+      hospitals = dummies;
+      isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFFF1F2ED), // 앱 테마 색상 일치
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.all(20),
+      child: Container(
+        width: double.infinity,
+        height: 450,
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        child: Column(
+          children: [
+            // 1. 헤더 영역
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.local_hospital_rounded,
+                      color: Colors.redAccent,
+                      size: 24,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      '비상 연락처',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF44403B),
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: Color(0xFF605A55),
+                    size: 22,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // 2. 리스트 영역
+            Expanded(
+              child: isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF44403B),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: hospitals.length,
+                      itemBuilder: (context, index) {
+                        final hospital = hospitals[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF44403B,
+                                ).withOpacity(0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 병원 이름
+                                    Text(
+                                      hospital.name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF44403B),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // 거리 & 진료시간
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on,
+                                          size: 14,
+                                          color: Colors.redAccent,
+                                        ),
+                                        Text(
+                                          " ${hospital.distance}km",
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.redAccent,
+                                          ),
+                                        ),
+                                        Container(
+                                          margin: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                          ),
+                                          width: 1,
+                                          height: 10,
+                                          color: Colors.grey,
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            hospital.address,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: const Color(
+                                                0xFF44403B,
+                                              ).withOpacity(0.6),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // 전화 버튼
+                              InkWell(
+                                onTap: () async {
+                                  final Uri url = Uri(
+                                    scheme: 'tel',
+                                    path: hospital.phoneNumber,
+                                  );
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url);
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(50),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.call,
+                                    color: Colors.redAccent,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );
