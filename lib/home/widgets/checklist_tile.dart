@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import '../models/task_model.dart';
 
-class CheckListItem extends StatelessWidget {
-  final Map<String, dynamic> item;
+class CheckListTile extends StatelessWidget {
+  final Task task;
   final VoidCallback onToggle;
   final VoidCallback onTap;
-  // [수정] onMore 대신 onEdit, onDelete로 변경
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const CheckListItem({
+  const CheckListTile({
     super.key,
-    required this.item,
+    required this.task,
     required this.onToggle,
     required this.onTap,
     required this.onEdit,
@@ -19,21 +19,21 @@ class CheckListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isDone = item['isDone'];
-    var iconData = item['icon'];
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: isDone
-            ? const Color.fromARGB(255, 217, 215, 210) // 완료 후 색상
-            : Colors.white, // 완료 전 색상
+        // [디자인 수정] 완료 시 배경색을 너무 어둡지 않게 조정 (선택사항)
+        color: task.isDone
+            ? const Color(0xFFE0E0E0) // 기존보다 조금 더 밝은 회색
+            : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDone ? Colors.transparent : Colors.grey.withOpacity(0.1),
+          color: task.isDone
+              ? Colors.transparent
+              : Colors.grey.withOpacity(0.1),
         ),
         boxShadow: [
-          if (!isDone)
+          if (!task.isDone)
             BoxShadow(
               color: Colors.grey.withOpacity(0.05),
               blurRadius: 5,
@@ -51,13 +51,15 @@ class CheckListItem extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDone ? const Color(0xFF44403B) : Colors.white,
+                color: task.isDone ? const Color(0xFF44403B) : Colors.white,
                 border: Border.all(
-                  color: isDone ? Colors.transparent : const Color(0xFFE0E0E0),
+                  color: task.isDone
+                      ? Colors.transparent
+                      : const Color(0xFFE0E0E0),
                   width: 2,
                 ),
               ),
-              child: isDone
+              child: task.isDone
                   ? const Icon(Icons.check, size: 18, color: Colors.white)
                   : null,
             ),
@@ -76,44 +78,54 @@ class CheckListItem extends StatelessWidget {
                     height: 36,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: isDone
+                      color: task.isDone
                           ? const Color(0xFF44403B).withOpacity(0.2)
                           : const Color(0xFFF1F2ED),
                       shape: BoxShape.circle,
                     ),
-                    child: iconData is String
-                        ? Text(iconData, style: const TextStyle(fontSize: 20))
-                        : Icon(
-                            iconData ?? Icons.check_circle_outline,
-                            size: 20,
-                            color: null,
-                          ),
+                    child: Text(
+                      task.icon ?? "🐾",
+                      style: const TextStyle(fontSize: 20),
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // [핵심 수정] 텍스트 스타일 변경
                         Text(
-                          item['title'],
+                          task.title,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: isDone ? Colors.grey : Colors.black87,
-                            decoration: isDone
+                            // 완료 시 텍스트 색상
+                            color: task.isDone
+                                ? Colors.grey[600]
+                                : Colors.black87,
+
+                            // [수정] 취소선 설정
+                            decoration: task.isDone
                                 ? TextDecoration.lineThrough
                                 : TextDecoration.none,
-                            decorationColor: Colors.grey,
+                            // [추가] 취소선 색상을 명확하게 지정 (끊김 방지)
+                            decorationColor: task.isDone
+                                ? Colors.grey[600]
+                                : Colors.transparent,
+                            // [추가] 취소선 두께 지정 (선명하게)
+                            decorationThickness: 2.0,
+                            decorationStyle: TextDecorationStyle.solid,
                           ),
                         ),
-                        if (item['time'] != null &&
-                            item['time'].isNotEmpty) ...[
+                        if (task.time.isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Text(
-                            item['time'],
+                            task.time,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: task.isDone
+                                  ? Colors.grey[600]
+                                  : Colors.black,
                             ),
                           ),
                         ],
@@ -125,27 +137,20 @@ class CheckListItem extends StatelessWidget {
             ),
           ),
 
-          // [핵심 변경] 3. 팝업 메뉴 버튼 (점 세 개)
+          // 3. 더보기 메뉴
           PopupMenuButton<String>(
-            icon: Icon(
-              Icons.more_vert,
-              color: const Color.fromARGB(255, 0, 0, 0),
-              size: 20,
-            ),
+            icon: const Icon(Icons.more_vert, color: Colors.black, size: 20),
             color: Colors.white,
             elevation: 3,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12), // 메뉴 자체도 둥글게
+              borderRadius: BorderRadius.circular(12),
             ),
             onSelected: (String value) {
-              if (value == 'edit') {
-                onEdit();
-              } else if (value == 'delete') {
-                onDelete();
-              }
+              if (value == 'edit') onEdit();
+              if (value == 'delete') onDelete();
             },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
+            itemBuilder: (context) => [
+              const PopupMenuItem(
                 value: 'edit',
                 child: Row(
                   children: [
@@ -155,7 +160,7 @@ class CheckListItem extends StatelessWidget {
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              const PopupMenuItem(
                 value: 'delete',
                 child: Row(
                   children: [

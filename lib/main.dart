@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'home/home.dart';
+import 'home/home_page.dart';
 import 'record/record_page.dart';
 import 'nutrition.dart'; // 파일이 없다면 주석 처리
 import 'aichat.dart'; // 파일이 없다면 주석 처리
