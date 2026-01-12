@@ -6,9 +6,15 @@ import 'record_data.dart' as record;
 
 class CalendarSection extends StatefulWidget {
   final String selectedPetName;
+  final VoidCallback? onRefresh; // ⭐ 추가: 상위 위젯을 새로고침하기 위한 콜백
   final Function(DateTime selectedDay, DateTime focusedDay)? onDayChanged;
 
-  const CalendarSection({super.key, required this.selectedPetName, this.onDayChanged});
+  const CalendarSection({
+    super.key,
+    required this.selectedPetName,
+    this.onRefresh, // ⭐ 추가
+    this.onDayChanged
+  });
 
   @override
   State<CalendarSection> createState() => _CalendarSectionState();
@@ -183,6 +189,8 @@ class _CalendarSectionState extends State<CalendarSection> {
                                               result;
                                         });
                                         setState(() {});
+                                        // ⭐ 데이터 변경 알림
+                                        widget.onRefresh?.call();
                                         if (widget.onDayChanged != null) widget
                                             .onDayChanged!(
                                             _selectedDay, _focusedDay);
@@ -197,6 +205,8 @@ class _CalendarSectionState extends State<CalendarSection> {
                                             .selectedPetName]![key]!.remove(s);
                                       });
                                       setState(() {});
+                                      // ⭐ 데이터 변경 알림
+                                      widget.onRefresh?.call();
                                       if (widget.onDayChanged != null) widget
                                           .onDayChanged!(
                                           _selectedDay, _focusedDay);
@@ -228,6 +238,8 @@ class _CalendarSectionState extends State<CalendarSection> {
                                     .putIfAbsent(key, () => []).add(result);
                               });
                               setState(() {});
+                              // ⭐ 데이터 변경 알림 (빨간 점 갱신)
+                              widget.onRefresh?.call();
                               if (widget.onDayChanged != null) widget
                                   .onDayChanged!(_selectedDay, _focusedDay);
                             }
@@ -271,11 +283,7 @@ class _CalendarSectionState extends State<CalendarSection> {
             headerVisible: false,
             rowHeight: 72,
             daysOfWeekHeight: 40,
-
-            // ⭐ [핵심 수정] 캘린더 제스처 범위를 좌우 스와이프만으로 제한합니다.
-            // 이렇게 하면 상하 스와이프는 부모인 SingleChildScrollView가 가져갑니다!
             availableGestures: AvailableGestures.horizontalSwipe,
-
             onPageChanged: (focusedDay) {
               setState(() => _focusedDay = focusedDay);
               if (widget.onDayChanged != null) widget.onDayChanged!(

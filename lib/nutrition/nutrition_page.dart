@@ -33,20 +33,30 @@ class _NutritionPageState extends State<NutritionPage> {
         record.selectedPetName.isEmpty && record.myPets.isNotEmpty
         ? record.myPets[0]
         : record.selectedPetName;
+
     Map<String, dynamic> currentProfile =
         record.petProfiles[currentPetName] ?? {};
-    double currentWeight =
+    double profileWeight =
         double.tryParse(currentProfile['weight']?.toString() ?? '0') ?? 0;
-    int foodAmount = _calculateDailyFood(currentProfile);
+
+    // 그래프 시작점 고정 로직 (index 0)
+    if (currentPetName.isNotEmpty) {
+      if (record.weightHistory[currentPetName] == null)
+        record.weightHistory[currentPetName] = [];
+      if (record.weightHistory[currentPetName]!.isEmpty && profileWeight > 0) {
+        record.weightHistory[currentPetName]!.add({
+          "date": DateTime(2000, 1, 1),
+          "weight": profileWeight,
+        });
+      }
+    }
+
     List<Map<String, dynamic>> history =
         record.weightHistory[currentPetName] ?? [];
-
-    if (currentPetName.isNotEmpty && history.isEmpty && currentWeight > 0) {
-      record.weightHistory[currentPetName] = [
-        {"date": DateTime.now(), "weight": currentWeight},
-      ];
-      history = record.weightHistory[currentPetName]!;
-    }
+    double currentWeight = history.isNotEmpty
+        ? (history.last['weight'] as double)
+        : profileWeight;
+    int foodAmount = _calculateDailyFood(currentProfile);
 
     return Container(
       color: const Color(0xFFF1F2ED),
@@ -107,6 +117,14 @@ class _NutritionPageState extends State<NutritionPage> {
                       color: const Color(0xFF44403B),
                       width: 1.5,
                     ),
+                    boxShadow: [
+                      if (isSelected)
+                        BoxShadow(
+                          color: const Color(0xFF44403B).withOpacity(0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                    ],
                   ),
                   child: Text(
                     petName,
