@@ -45,30 +45,36 @@ class Hospital {
   final String address; // 진료 시간 대신 주소나 설명으로 활용
   final String phoneNumber;
   final double distance; // 거리 (km)
+  final String link;
 
   Hospital({
     required this.name,
     required this.address,
     required this.phoneNumber,
     required this.distance,
+    required this.link,
   });
 
   factory Hospital.fromJson(Map<String, dynamic> json) {
-    // HTML 태그 제거 (예: <b>병원</b>)
     String cleanTitle = json['title'].toString().replaceAll(
       RegExp(r'<[^>]*>'),
       '',
     );
 
+    // 전화번호가 "042-822-5071" 형태이거나 아예 없거나를 판단
+    String phone = json['telephone'] ?? "";
+
     return Hospital(
       name: cleanTitle,
       address: json['roadAddress'] ?? json['address'] ?? "정보 없음",
-      phoneNumber: json['telephone'] ?? "번호 없음",
-      // *참고: API가 거리를 주지 않으므로, 여기서는 0.5~5.0km 사이 랜덤 값으로 시뮬레이션합니다.
-      // 실제로는 내 GPS 좌표와 mapx, mapy 좌표를 계산해야 합니다.
+      phoneNumber: phone,
       distance: double.parse(
         (0.5 + Random().nextDouble() * 4.5).toStringAsFixed(1),
       ),
+      // link가 비어있으면 네이버 검색 결과 페이지를 기본으로 생성
+      link: (json['link'] != null && json['link'].toString().isNotEmpty)
+          ? json['link']
+          : "https://search.naver.com/search.naver?query=$cleanTitle",
     );
   }
 }
@@ -598,27 +604,20 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
   void _loadDummyData() {
     List<Hospital> dummies = [
       Hospital(
-        name: "펫 응급센터",
-        address: "24시간 연중무휴",
-        phoneNumber: "02-987-6543",
+        name: "예담 동물병원",
+        address: "대전 유성구 원신흥동",
+        phoneNumber: "042-822-5071", // 번호 있음 -> 빨간색 전화 아이콘
         distance: 0.8,
+        link: "https://blog.naver.com/yedamamc",
       ),
       Hospital(
-        name: "김수진 수의사",
-        address: "평일 09:00-20:00",
-        phoneNumber: "02-123-4567",
+        name: "정보 없는 병원",
+        address: "주소 정보 없음",
+        phoneNumber: "", // 번호 없음 -> 파란색 웹 아이콘
         distance: 1.2,
-      ),
-      Hospital(
-        name: "박민수 수의사",
-        address: "평일 10:00-19:00",
-        phoneNumber: "02-456-7890",
-        distance: 2.5,
+        link: "https://search.naver.com",
       ),
     ];
-    // 더미 데이터도 정렬
-    dummies.sort((a, b) => a.distance.compareTo(b.distance));
-
     setState(() {
       hospitals = dummies;
       isLoading = false;
@@ -757,14 +756,28 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                                 ),
                               ),
                               // 전화 버튼
+                              // 전화 버튼 부분 (EmergencyDialog 내부)
+                              // 전화 또는 웹 버튼 부분
                               InkWell(
                                 onTap: () async {
-                                  final Uri url = Uri(
-                                    scheme: 'tel',
-                                    path: hospital.phoneNumber,
-                                  );
-                                  if (await canLaunchUrl(url)) {
-                                    await launchUrl(url);
+                                  if (hospital.phoneNumber.isNotEmpty) {
+                                    // 1. 번호가 있으면 다이얼러 실행
+                                    final String cleanNumber = hospital
+                                        .phoneNumber
+                                        .replaceAll(RegExp(r'[^0-9]'), '');
+                                    final Uri telUrl = Uri.parse(
+                                      'tel:$cleanNumber',
+                                    );
+                                    if (await canLaunchUrl(telUrl)) {
+                                      await launchUrl(telUrl);
+                                    }
+                                  } else {
+                                    // 2. 번호가 없으면 웹 브라우저 실행
+                                    final Uri webUrl = Uri.parse(hospital.link);
+                                    await launchUrl(
+                                      webUrl,
+                                      mode: LaunchMode.externalApplication,
+                                    );
                                   }
                                 },
                                 borderRadius: BorderRadius.circular(50),
@@ -772,12 +785,20 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: Colors.redAccent.withOpacity(0.1),
+                                    // 번호 유무에 따라 색상 테마 변경
+                                    color: hospital.phoneNumber.isNotEmpty
+                                        ? Colors.redAccent.withOpacity(0.1)
+                                        : Colors.blueAccent.withOpacity(0.1),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(
-                                    Icons.call,
-                                    color: Colors.redAccent,
+                                  child: Icon(
+                                    // [핵심] 번호가 있으면 call, 없으면 language(웹) 아이콘
+                                    hospital.phoneNumber.isNotEmpty
+                                        ? Icons.call
+                                        : Icons.language,
+                                    color: hospital.phoneNumber.isNotEmpty
+                                        ? Colors.redAccent
+                                        : Colors.blueAccent,
                                     size: 20,
                                   ),
                                 ),
