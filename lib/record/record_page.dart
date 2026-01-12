@@ -17,7 +17,6 @@ class _RecordPageState extends State<RecordPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
-  // 펫 추가 다이얼로그 로직 (home.dart와 동일한 스타일 유지)
   void _openAddPetDialog() async {
     final result = await showDialog(
       context: context,
@@ -71,13 +70,11 @@ class _RecordPageState extends State<RecordPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
-      // [수정] home.dart와 위치를 맞추기 위해 SafeArea를 제거하고 padding을 조정함
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 15, 20, 120),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- 상단 펫 선택 탭 (home.dart의 구조와 동일하게 수정) ---
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -105,9 +102,10 @@ class _RecordPageState extends State<RecordPage> {
             ),
             const SizedBox(height: 20),
 
-            // 캘린더 섹션
+            // ⭐ [수정 부분] onRefresh를 추가로 전달합니다.
             CalendarSection(
               selectedPetName: currentPetName,
+              onRefresh: widget.onRefresh, // 이 부분이 추가되었습니다!
               onDayChanged: (selectedDay, focusedDay) {
                 setState(() {
                   _selectedDay = selectedDay;
@@ -117,7 +115,6 @@ class _RecordPageState extends State<RecordPage> {
             ),
             const SizedBox(height: 24),
 
-            // 사진 그리드 섹션
             PhotoGridSection(
               selectedPetName: currentPetName,
               focusedDay: _focusedDay,
@@ -136,7 +133,6 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
-  // [수정] home.dart와 UI 디자인을 완전히 동일하게 맞춤
   Widget _buildAddPetButton() {
     return GestureDetector(
       onTap: _openAddPetDialog,
@@ -152,7 +148,6 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
-  // [수정] home.dart와 UI 디자인(폰트 크기, 색상 등)을 동일하게 맞춤
   Widget _buildPetSelectButton(String name, bool isSelected) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
