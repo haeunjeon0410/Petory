@@ -6,7 +6,7 @@ import 'home/home_page.dart';
 import 'record/record_page.dart';
 import 'record/record_data.dart' as record;
 import 'nutrition/nutrition_page.dart';
-import 'aichat.dart';
+import 'aichat/ai_chat_page.dart';
 
 void main() {
   runApp(const PetoryApp());
@@ -277,7 +277,7 @@ class _MainPageState extends State<MainPage> {
       HomePage(onRefresh: () => setState(() {})),
       RecordPage(onRefresh: () => setState(() {})),
       NutritionPage(onRefresh: () => setState(() {})),
-      const AiPage(),
+      const AiChatPage(),
     ];
 
     return Scaffold(
