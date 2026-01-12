@@ -3,7 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'record_data.dart' as record;
 import 'photo_grid_section.dart';
 import 'calendar_section.dart';
-import '../home/register_pet.dart';
+import '../home/sheets/pet_register_sheet.dart';
 
 class RecordPage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -25,7 +25,7 @@ class _RecordPageState extends State<RecordPage> {
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 20),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: const PetRegistrationDialog(),
+        child: const PetRegisterSheet(),
       ),
     );
 

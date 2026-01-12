@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import '../record/record_data.dart' as record;
-import '../home/register_pet.dart';
+import '../home/sheets/pet_register_sheet.dart';
 import 'nutrition_components.dart';
 
 class NutritionPage extends StatefulWidget {
@@ -19,7 +19,9 @@ class _NutritionPageState extends State<NutritionPage> {
     if (weight <= 0) return 0;
     bool isNeutered = profile['isNeutered'] ?? false;
     double rer = 70 * pow(weight, 0.75).toDouble();
-    double k = (profile['type'] == "강아지") ? (isNeutered ? 1.6 : 1.8) : (isNeutered ? 1.2 : 1.4);
+    double k = (profile['type'] == "강아지")
+        ? (isNeutered ? 1.6 : 1.8)
+        : (isNeutered ? 1.2 : 1.4);
     if (_activityLevel == "저조") k -= 0.2;
     if (_activityLevel == "활발") k += 0.4;
     return (rer * k / 3.5).round();
@@ -27,14 +29,22 @@ class _NutritionPageState extends State<NutritionPage> {
 
   @override
   Widget build(BuildContext context) {
-    String currentPetName = record.selectedPetName.isEmpty && record.myPets.isNotEmpty ? record.myPets[0] : record.selectedPetName;
-    Map<String, dynamic> currentProfile = record.petProfiles[currentPetName] ?? {};
-    double currentWeight = double.tryParse(currentProfile['weight']?.toString() ?? '0') ?? 0;
+    String currentPetName =
+        record.selectedPetName.isEmpty && record.myPets.isNotEmpty
+        ? record.myPets[0]
+        : record.selectedPetName;
+    Map<String, dynamic> currentProfile =
+        record.petProfiles[currentPetName] ?? {};
+    double currentWeight =
+        double.tryParse(currentProfile['weight']?.toString() ?? '0') ?? 0;
     int foodAmount = _calculateDailyFood(currentProfile);
-    List<Map<String, dynamic>> history = record.weightHistory[currentPetName] ?? [];
+    List<Map<String, dynamic>> history =
+        record.weightHistory[currentPetName] ?? [];
 
     if (currentPetName.isNotEmpty && history.isEmpty && currentWeight > 0) {
-      record.weightHistory[currentPetName] = [{"date": DateTime.now(), "weight": currentWeight}];
+      record.weightHistory[currentPetName] = [
+        {"date": DateTime.now(), "weight": currentWeight},
+      ];
       history = record.weightHistory[currentPetName]!;
     }
 
@@ -42,57 +52,106 @@ class _NutritionPageState extends State<NutritionPage> {
       color: const Color(0xFFF1F2ED),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 15, 20, 30),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _buildPetSelectionBar(),
-          const SizedBox(height: 20),
-          FoodCalculatorCard(
-            profile: currentProfile,
-            foodAmount: foodAmount,
-            activityLevel: _activityLevel,
-            onActivityChanged: (val) => setState(() => _activityLevel = val),
-          ),
-          const SizedBox(height: 20),
-          WeightTrendCard(
-            petName: currentPetName,
-            history: history,
-            currentWeight: currentWeight,
-            onUpdate: () {
-              setState(() {});
-              if (widget.onRefresh != null) widget.onRefresh!();
-            },
-          ),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildPetSelectionBar(),
+            const SizedBox(height: 20),
+            FoodCalculatorCard(
+              profile: currentProfile,
+              foodAmount: foodAmount,
+              activityLevel: _activityLevel,
+              onActivityChanged: (val) => setState(() => _activityLevel = val),
+            ),
+            const SizedBox(height: 20),
+            WeightTrendCard(
+              petName: currentPetName,
+              history: history,
+              currentWeight: currentWeight,
+              onUpdate: () {
+                setState(() {});
+                if (widget.onRefresh != null) widget.onRefresh!();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPetSelectionBar() {
-    return SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
-      ...record.myPets.map((petName) {
-        bool isSelected = record.selectedPetName == petName;
-        return Padding(padding: const EdgeInsets.only(right: 10), child: GestureDetector(
-          onTap: () {
-            setState(() => record.selectedPetName = petName);
-            if (widget.onRefresh != null) widget.onRefresh!();
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: BoxDecoration(color: isSelected ? const Color(0xFF44403B) : const Color(0xFFF1F2ED), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFF44403B), width: 1.5)),
-            child: Text(petName, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFF44403B), fontWeight: FontWeight.bold, fontSize: 15)),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          ...record.myPets.map((petName) {
+            bool isSelected = record.selectedPetName == petName;
+            return Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => record.selectedPetName = petName);
+                  if (widget.onRefresh != null) widget.onRefresh!();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF44403B)
+                        : const Color(0xFFF1F2ED),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF44403B),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Text(
+                    petName,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF44403B),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          GestureDetector(
+            onTap: () async {
+              final result = await showDialog(
+                context: context,
+                builder: (context) => const Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: PetRegisterSheet(),
+                ),
+              );
+              if (result != null) {
+                setState(() {
+                  record.myPets.add(result['name']);
+                  record.petProfiles[result['name']] = result;
+                  record.selectedPetName = result['name'];
+                });
+                if (widget.onRefresh != null) widget.onRefresh!();
+              }
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFF44403B),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 20),
+            ),
           ),
-        ));
-      }),
-      GestureDetector(onTap: () async {
-        final result = await showDialog(context: context, builder: (context) => const Dialog(backgroundColor: Colors.transparent, child: PetRegistrationDialog()));
-        if (result != null) {
-          setState(() {
-            record.myPets.add(result['name']);
-            record.petProfiles[result['name']] = result;
-            record.selectedPetName = result['name'];
-          });
-          if (widget.onRefresh != null) widget.onRefresh!();
-        }
-      }, child: Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFF44403B), borderRadius: BorderRadius.circular(18)), child: const Icon(Icons.add, color: Colors.white, size: 20))),
-    ]));
+        ],
+      ),
+    );
   }
 }
