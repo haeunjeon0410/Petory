@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart'; // ⭐ 일관성을 위해 TableCalendar 사용
+import 'package:table_calendar/table_calendar.dart';
 import 'record_data.dart' as record;
 
 class PhotoGridSection extends StatelessWidget {
@@ -16,7 +16,6 @@ class PhotoGridSection extends StatelessWidget {
     required this.onRefresh,
   });
 
-  // ⭐ 하은아, 여기 디자인을 완전히 바꾼 컴팩트한 날짜 선택 창이야!
   void _showDatePicker(BuildContext context, DateTime oldDate, String path) {
     DateTime tempPickedDate = oldDate;
     final pointColor = const Color(0xFF44403B);
@@ -24,171 +23,128 @@ class PhotoGridSection extends StatelessWidget {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: backgroundColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.85, // 너비 조절
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. 헤더: 제목 왼쪽 정렬
-                    Text(
-                      '날짜 수정',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: pointColor,
-                      ),
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          title: Text('날짜 수정',
+              style: TextStyle(color: pointColor, fontSize: 16, fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.85,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TableCalendar(
+                    locale: 'ko_KR',
+                    firstDay: DateTime.utc(2020, 1, 1),
+                    lastDay: DateTime.utc(2035, 12, 31),
+                    focusedDay: tempPickedDate,
+                    selectedDayPredicate: (day) => isSameDay(tempPickedDate, day),
+                    sixWeekMonthsEnforced: true, // ⭐ 높이 고정 설정 추가
+                    headerStyle: HeaderStyle(
+                      formatButtonVisible: false,
+                      titleCentered: true,
+                      titleTextStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: pointColor),
+                      leftChevronIcon: Icon(Icons.chevron_left, size: 20, color: pointColor),
+                      rightChevronIcon: Icon(Icons.chevron_right, size: 20, color: pointColor),
                     ),
-                    const SizedBox(height: 16),
-
-                    // 2. 컴팩트 캘린더 (기존 미감 유지)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: TableCalendar(
-                        locale: 'ko_KR',
-                        firstDay: DateTime.utc(2020, 1, 1),
-                        lastDay: DateTime.utc(2035, 12, 31),
-                        focusedDay: tempPickedDate,
-                        currentDay: DateTime.now(),
-                        selectedDayPredicate: (day) => isSameDay(tempPickedDate, day),
-                        headerStyle: HeaderStyle(
-                          formatButtonVisible: false,
-                          titleCentered: true,
-                          titleTextStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: pointColor),
-                          leftChevronIcon: Icon(Icons.chevron_left, size: 20, color: pointColor),
-                          rightChevronIcon: Icon(Icons.chevron_right, size: 20, color: pointColor),
-                          headerPadding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                        // ⭐ 사이즈를 줄이기 위해 높이 조절
-                        rowHeight: 40,
-                        daysOfWeekHeight: 25,
-                        calendarStyle: CalendarStyle(
-                          todayDecoration: BoxDecoration(color: pointColor.withOpacity(0.1), shape: BoxShape.circle),
-                          todayTextStyle: TextStyle(color: pointColor, fontWeight: FontWeight.bold),
-                          selectedDecoration: BoxDecoration(color: pointColor, shape: BoxShape.circle),
-                          defaultTextStyle: const TextStyle(fontSize: 13),
-                          weekendTextStyle: const TextStyle(fontSize: 13, color: Colors.red),
-                        ),
-                        onDaySelected: (selectedDay, focusedDay) {
-                          setDialogState(() => tempPickedDate = selectedDay);
-                        },
-                      ),
+                    rowHeight: 48,
+                    daysOfWeekHeight: 35,
+                    calendarStyle: CalendarStyle(
+                      selectedDecoration: BoxDecoration(color: pointColor, shape: BoxShape.circle),
+                      cellMargin: const EdgeInsets.all(6),
+                      selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      todayDecoration: BoxDecoration(color: pointColor.withOpacity(0.1), shape: BoxShape.circle),
+                      todayTextStyle: TextStyle(color: pointColor, fontWeight: FontWeight.bold, fontSize: 13),
+                      defaultTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF44403B)),
+                      weekendTextStyle: const TextStyle(fontSize: 13),
+                      outsideDaysVisible: false,
                     ),
-                    const SizedBox(height: 24),
-
-                    // 3. 하단 버튼 영역 (우측 정렬)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        // 취소 버튼
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: Colors.white,
-                            foregroundColor: pointColor,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: pointColor.withOpacity(0.1)),
-                            ),
-                          ),
-                          child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 8),
-                        // 변경 버튼
-                        ElevatedButton(
-                          onPressed: () {
-                            final newDate = record.normalizeDate(tempPickedDate);
-                            if (newDate != oldDate) {
-                              record.photos[selectedPetName]?[oldDate]?.remove(path);
-                              record.photos[selectedPetName]?.putIfAbsent(newDate, () => []).add(path);
-                              onRefresh();
-                            }
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: pointColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('변경', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    )
-                  ],
+                    calendarBuilders: CalendarBuilders(
+                      dowBuilder: (context, day) {
+                        if (day.weekday == DateTime.sunday) return const Center(child: Text('일', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500)));
+                        if (day.weekday == DateTime.saturday) return const Center(child: Text('토', style: TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.w500)));
+                        return null;
+                      },
+                      defaultBuilder: (context, day, focusedDay) {
+                        if (day.weekday == DateTime.sunday) return Center(child: Text('${day.day}', style: const TextStyle(color: Colors.red, fontSize: 13)));
+                        if (day.weekday == DateTime.saturday) return Center(child: Text('${day.day}', style: const TextStyle(color: Colors.blue, fontSize: 13)));
+                        return null;
+                      },
+                    ),
+                    onDaySelected: (selectedDay, focusedDay) {
+                      setDialogState(() => tempPickedDate = selectedDay);
+                    },
+                  ),
                 ),
-              ),
-            );
-          }
+              ],
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 16),
+          actions: [
+            _buildSmallButton(label: "취소", isPrimary: false, onTap: () => Navigator.pop(context)),
+            _buildSmallButton(label: "변경", isPrimary: true, onTap: () {
+              final newDate = record.normalizeDate(tempPickedDate);
+              if (newDate != oldDate) {
+                record.photos[selectedPetName]?[oldDate]?.remove(path);
+                record.photos[selectedPetName]?.putIfAbsent(newDate, () => []).add(path);
+                onRefresh();
+              }
+              Navigator.pop(context);
+            }),
+          ],
+        ),
       ),
     );
   }
 
-  // 삭제 다이얼로그 (이전과 동일한 스타일 유지)
   void _showDeleteDialog(BuildContext context, DateTime date, String path) {
     final pointColor = const Color(0xFF44403B);
     final backgroundColor = const Color(0xFFF1F2ED);
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (context) => AlertDialog(
         backgroundColor: backgroundColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.8,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('사진 삭제', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: pointColor)),
-              const SizedBox(height: 20),
-              const Text('정말 이 사진을 삭제할까요?', style: TextStyle(fontSize: 15, color: Color(0xFF605A55))),
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0, shadowColor: Colors.transparent,
-                      backgroundColor: Colors.white, foregroundColor: pointColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: pointColor.withOpacity(0.1))),
-                    ),
-                    child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      record.photos[selectedPetName]?[date]?.remove(path);
-                      onRefresh();
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0, shadowColor: Colors.transparent,
-                      backgroundColor: pointColor, foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('삭제', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        title: Text('사진 삭제', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: pointColor)),
+        content: const Text('정말 이 사진을 삭제할까요?', style: TextStyle(fontSize: 13, color: Color(0xFF605A55))),
+        actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 16),
+        actions: [
+          _buildSmallButton(label: "취소", isPrimary: false, onTap: () => Navigator.pop(context)),
+          _buildSmallButton(label: "삭제", isPrimary: true, onTap: () {
+            record.photos[selectedPetName]?[date]?.remove(path);
+            onRefresh();
+            Navigator.pop(context);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallButton({required String label, required VoidCallback onTap, required bool isPrimary}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isPrimary ? const Color(0xFF44403B) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: isPrimary ? null : Border.all(color: const Color(0xFFE7E5E4)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isPrimary ? Colors.white : const Color(0xFF605A55),
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
           ),
         ),
       ),
