@@ -231,7 +231,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                                   memoController,
                                   "추가 메모 (선택)",
                                   maxLines: 4,
-                                  maxLength: 95,
                                   onTap: _hideEmojiPicker,
                                 ),
                                 const SizedBox(height: 40),
@@ -348,7 +347,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     int maxLines = 1,
     Widget? suffixIcon,
     VoidCallback? onTap,
-    int? maxLength,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -366,12 +364,10 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         controller: controller,
         onTap: onTap,
         maxLines: maxLines,
-        maxLength: maxLength,
         // 읽기 전용으로 설정하면 키보드가 뜨지 않습니다 (시간 필드 등에 유용)
         readOnly: onTap == null ? true : false,
         decoration: InputDecoration(
           hintText: hint,
-          counterText: "",
           hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,

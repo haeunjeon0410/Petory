@@ -16,7 +16,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // --- 1. 상태 데이터 ---
   List<String> get myPets => record.myPets;
-  int _selectedPetIndex = 0;
 
   Map<String, List<Map<String, dynamic>>> get petChecklists =>
       record.petChecklists;
@@ -99,7 +98,6 @@ class _HomePageState extends State<HomePage> {
   void _showDetailSheet(Map<String, dynamic> item) {
     bool isDone = item['isDone'];
     var iconData = item['icon'];
-    String? memo = item['memo'];
 
     showDialog(
       context: context,
@@ -181,7 +179,7 @@ class _HomePageState extends State<HomePage> {
                                 Text(
                                   item['title'],
                                   style: const TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black87,
                                   ),
@@ -199,31 +197,6 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                      if (memo != null && memo.trim().isNotEmpty) ...[
-                        const SizedBox(height: 24), // 간격 띄우기
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5), // 연한 회색 배경
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                memo,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black87,
-                                  height: 1.4, // 줄 간격
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
                       const SizedBox(height: 30),
                       Container(
                         width: double.infinity,
@@ -282,108 +255,15 @@ class _HomePageState extends State<HomePage> {
   // --- 3. 화면 빌드 ---
   @override
   Widget build(BuildContext context) {
-    // [1] 예외 처리: 등록된 반려동물이 0마리일 때 (체크리스트 포함 버전)
-    if (myPets.isEmpty) {
-      return Container(
-        color: const Color(0xFFF1F2ED),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. 상단 펫 추가 버튼 (여기로 등록 유도)
-              Row(children: [_buildAddPetButton()]),
-              const SizedBox(height: 20),
-
-              // 2. 빈 프로필 카드 (수정됨)
-              Container(
-                width: double.infinity,
-                // height: 200, <--- [삭제] 고정 높이를 지워서 내용물 크기에 맞춥니다.
-                padding: const EdgeInsets.all(20), // <--- [추가] 일반 카드와 동일한 패딩
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.08),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  // 컬럼 대신 텍스트만 깔끔하게 배치하거나, 높이를 맞추고 싶다면 Padding 조절
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 20,
-                    ), // 내부 여백으로 높이 조절
-                    child: Text(
-                      "등록된 반려동물이 없습니다.\n상단의 (+) 버튼을 눌러 등록해주세요.", // 안내 문구 수정
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // 3. 체크리스트 헤더
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "오늘의 체크리스트",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF44403B),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("일정을 추가하려면 반려동물을 먼저 등록해주세요 🐾"),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF44403B),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-
-              // 4. 빈 체크리스트 화면
-              _buildEmptyState(),
-            ],
-          ),
-        ),
-      );
+    // _selectedPetIndex 대신 record.selectedPetName을 사용하도록 수정!
+    String currentPetName = record.selectedPetName;
+    if (currentPetName.isEmpty && record.myPets.isNotEmpty) {
+      currentPetName = record.myPets[0];
     }
-    String currentPetId = myPets[_selectedPetIndex];
+
     List<Map<String, dynamic>> currentCheckList =
-        petChecklists[currentPetId] ?? [];
-    Map<String, dynamic> currentProfile = petProfiles[currentPetId] ?? {};
-    String currentDisplayName = currentProfile['name'] ?? "이름 없음";
+        petChecklists[currentPetName] ?? [];
+    Map<String, dynamic> currentProfile = petProfiles[currentPetName] ?? {};
 
     // [1] 리스트를 시간 순서대로 정렬
     currentCheckList.sort((a, b) {
@@ -405,17 +285,21 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   ...List.generate(myPets.length, (index) {
-                    String id = myPets[index];
-                    String name = petProfiles[id]?['name'] ?? "이름 없음";
+                    String petName = myPets[index];
+                    // ⭐ 수정: 로컬 인덱스 대신 공용 이름을 사용해 선택 여부 판단
+                    bool isSelected = record.selectedPetName == petName;
 
                     return Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedPetIndex = index),
-                        child: _buildPetSelectButton(
-                          name,
-                          _selectedPetIndex == index,
-                        ),
+                        onTap: () {
+                          setState(() {
+                            record.selectedPetName = petName; // ⭐ 공용 변수 업데이트
+                          });
+                          if (widget.onRefresh != null)
+                            widget.onRefresh!(); // ⭐ 메인 갱신
+                        },
+                        child: _buildPetSelectButton(petName, isSelected),
                       ),
                     );
                   }),
@@ -426,7 +310,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 20),
 
             // 프로필 카드
-            _buildProfileCard(currentDisplayName, currentProfile),
+            _buildProfileCard(currentPetName, currentProfile),
 
             const SizedBox(height: 30),
 
@@ -444,7 +328,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 GestureDetector(
                   // [2] 추가 버튼: 중앙 팝업(_openTaskSheet)으로 연결
-                  onTap: () => _openTaskSheet(currentPetId),
+                  onTap: () => _openTaskSheet(currentPetName),
                   child: Container(
                     width: 32,
                     height: 32,
@@ -517,18 +401,17 @@ class _HomePageState extends State<HomePage> {
         ? "🐶"
         : (petType == "고양이" ? "🐱" : "🐾");
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
-            blurRadius: 12,
-            spreadRadius: 2,
-            offset: const Offset(0, 4),
+    return GestureDetector(
+      onTap: () async {
+        final updatedData = await showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: PetRegistrationDialog(existingData: profileData),
           ),
         );
 
@@ -592,170 +475,72 @@ class _HomePageState extends State<HomePage> {
                   ? Icon(Icons.pets, size: 40, color: Colors.grey[400])
                   : null,
             ),
-            child: (profileData['image'] == null)
-                ? Icon(Icons.pets, size: 40, color: Colors.grey[400])
-                : null,
-          ),
-          const SizedBox(width: 18),
+            const SizedBox(width: 18),
 
-          // 2. 텍스트 정보 (Expanded 사용)
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 4),
-                // 이름 + 이모지
-                Row(
-                  children: [
-                    Text(
-                      profileData['name'] ?? petName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF43403C),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(typeEmoji, style: const TextStyle(fontSize: 20)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                // 품종 • 나이 + 성별 아이콘
-                Row(
-                  children: [
-                    Text(
-                      "${profileData['species'] ?? '품종 모름'} • ${profileData['age'] ?? '?'}살",
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    if (profileData['gender'] == 'male')
-                      const Icon(Icons.male, color: Colors.blue, size: 16)
-                    else if (profileData['gender'] == 'female')
-                      const Icon(Icons.female, color: Colors.red, size: 16),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // 키/체중 태그
-                Row(
-                  children: [
-                    _buildTag(
-                      "${profileData['height'] ?? '?'} cm",
-                      Colors.blue,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildTag("${profileData['weight'] ?? '?'} kg", Colors.red),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // 3. 점 세 개 (더보기) 메뉴 버튼
-          PopupMenuButton<String>(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.more_vert, color: Colors.grey),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            onSelected: (String value) async {
-              String currentPetId = myPets[_selectedPetIndex];
-
-              if (value == 'edit') {
-                // --- 수정 로직 ---
-                String? resultName = await PetRegistrationDialog.editPetProfile(
-                  context,
-                  currentPetId,
-                  profileData,
-                );
-
-                if (resultName != null) {
-                  setState(() {}); // 화면 갱신
-                  if (widget.onRefresh != null) widget.onRefresh!();
-                }
-              } else if (value == 'delete') {
-                // --- 삭제 로직 ---
-                bool? confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text("반려동물 삭제"),
-                    content: Text(
-                      "정말로 '$petName' 정보를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.",
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text(
-                          "취소",
-                          style: TextStyle(color: Colors.grey),
+            // 텍스트 정보
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // [2] 첫 번째 줄: 이름 + 이모지(🐶/🐱)
+                  Row(
+                    children: [
+                      Text(
+                        profileData['name'] ?? petName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF43403C),
                         ),
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text(
-                          "삭제",
-                          style: TextStyle(color: Colors.red),
+                      const SizedBox(width: 6),
+                      // 여기에 이모지를 표시합니다.
+                      Text(typeEmoji, style: const TextStyle(fontSize: 20)),
+                    ],
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // [3] 두 번째 줄: 품종 • 나이 + 성별 아이콘(♂/♀)
+                  Row(
+                    children: [
+                      Text(
+                        "${profileData['species'] ?? '품종 모름'} • ${profileData['age'] ?? '?'}살",
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
                         ),
+                      ),
+                      const SizedBox(width: 6),
+                      // 성별 아이콘을 여기로 옮겼습니다.
+                      if (profileData['gender'] == 'male')
+                        const Icon(Icons.male, color: Colors.blue, size: 16)
+                      else if (profileData['gender'] == 'female')
+                        const Icon(Icons.female, color: Colors.red, size: 16),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // 키/체중 태그 (기존 코드 유지)
+                  Row(
+                    children: [
+                      _buildTag(
+                        "${profileData['height'] ?? '?'} cm",
+                        Colors.blue,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildTag(
+                        "${profileData['weight'] ?? '?'} kg",
+                        Colors.red,
                       ),
                     ],
                   ),
-                );
-
-                if (confirm == true) {
-                  setState(() {
-                    // 데이터 삭제
-                    record.myPets.remove(currentPetId);
-                    record.petProfiles.remove(currentPetId);
-                    record.petChecklists.remove(currentPetId);
-
-                    // 인덱스 초기화 (삭제 후 첫 번째 펫으로 이동)
-                    if (record.myPets.isEmpty) {
-                      // 다 지워졌으면 0으로 초기화 (build의 예외 처리가 화면을 그림)
-                      _selectedPetIndex = 0;
-                    } else if (_selectedPetIndex > 0) {
-                      // 현재 인덱스가 0보다 크면 하나 줄여서 '이전' 펫을 보여줌
-                      _selectedPetIndex--;
-                    } else {
-                      // 0번(맨 앞)을 지웠다면, 그대로 0번을 유지 (자동으로 다음 펫이 0번이 됨)
-                      _selectedPetIndex = 0;
-                    }
-                  });
-                }
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              // 수정 메뉴
-              const PopupMenuItem<String>(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit, size: 20, color: Colors.black54),
-                    SizedBox(width: 8),
-                    Text('수정'),
-                  ],
-                ),
+                ],
               ),
-              const PopupMenuDivider(), // 구분선
-              // 삭제 메뉴
-              const PopupMenuItem<String>(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, size: 20, color: Colors.redAccent),
-                    SizedBox(width: 8),
-                    Text('삭제', style: TextStyle(color: Colors.redAccent)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -777,20 +562,15 @@ class _HomePageState extends State<HomePage> {
             child: const PetRegistrationDialog(), // (이름 변경 예정)
           ),
         );
-
         if (result != null && result is Map<String, dynamic>) {
-          // [수정 전] 이름(newName)을 바로 키로 사용함
-          // String newName = result['name'];
-
-          // [수정 후] 고유 ID를 생성하여 키로 사용
-          String newId = DateTime.now().millisecondsSinceEpoch.toString();
-
+          String newName = result['name'];
           setState(() {
-            record.myPets.add(newId); // 리스트에 ID 저장
-            record.petChecklists[newId] = []; // 체크리스트도 ID로 관리
-            record.petProfiles[newId] = result; // 프로필도 ID로 관리
-            _selectedPetIndex = myPets.length - 1;
+            record.myPets.add(newName);
+            record.petChecklists[newName] = [];
+            record.petProfiles[newName] = result;
+            record.selectedPetName = newName; // 새로 추가된 펫을 공용 변수에 저장
           });
+          if (widget.onRefresh != null) widget.onRefresh!(); // 메인 갱신
         }
       },
       child: Container(
