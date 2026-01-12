@@ -5,7 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../record/record_data.dart' as record;
 
 class NutritionDialogs {
-  // 기록 관리 (수정/삭제 선택) 다이얼로그
+  // 기록 관리 다이얼로그 - 너비를 더 좁게(insetPadding 증가) 조정
   static void showEditDeleteDialog({
     required BuildContext context,
     required String petName,
@@ -16,28 +16,30 @@ class NutritionDialogs {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: const Color(0xFFF1F2ED),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 70),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+        // ⭐ 바의 길이를 짧게 하기 위해 좌우 패딩을 더 넓게 설정
+        insetPadding: const EdgeInsets.symmetric(horizontal: 100),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("기록 관리", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF44403B))),
-              const SizedBox(height: 20),
+              const Text("기록 관리", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF44403B))),
+              const SizedBox(height: 18),
               _buildCompactMenuButton(
-                label: "수정하기",
-                icon: Icons.edit_outlined,
+                label: "수정",
+                icon: Icons.edit_note_rounded,
+                color: const Color(0xFF44403B),
                 onTap: () {
                   Navigator.pop(context);
                   showWeightDialog(context, petName, editIndex: index, onUpdate: onUpdate);
                 },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               _buildCompactMenuButton(
-                label: "삭제하기",
-                icon: Icons.delete_outline_rounded,
-                isDelete: true,
+                label: "삭제",
+                icon: Icons.delete_sweep_rounded,
+                color: const Color(0xFF605A55),
                 onTap: () {
                   Navigator.pop(context);
                   _confirmDelete(context, petName, index, onUpdate);
@@ -50,7 +52,7 @@ class NutritionDialogs {
     );
   }
 
-  // 체중 입력 다이얼로그
+  // 체중 입력 다이얼로그 (기존 로직 유지)
   static void showWeightDialog(BuildContext context, String petName, {int? editIndex, required VoidCallback onUpdate, DateTime? initialDate, String? initialWeight}) {
     TextEditingController weightController = TextEditingController(text: initialWeight);
     DateTime selectedDate = initialDate ?? DateTime.now();
@@ -96,7 +98,6 @@ class NutritionDialogs {
                 controller: weightController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(fontSize: 13),
-                // 소수점 2자리까지만 입력 가능하도록 제한
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
                 decoration: InputDecoration(
                   hintText: "체중을 입력해주세요",
@@ -124,7 +125,7 @@ class NutritionDialogs {
     );
   }
 
-  // 날짜 선택 달력 다이얼로그
+  // 달력 다이얼로그 (기존 요일 색상 반영)
   static void _showCalendarPicker(BuildContext context, String petName, {int? editIndex, required VoidCallback onUpdate, required DateTime currentDate, required String currentWeight}) {
     DateTime tempDate = currentDate;
     showDialog(
@@ -153,11 +154,9 @@ class NutritionDialogs {
                     headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
                     calendarStyle: const CalendarStyle(
                       selectedDecoration: BoxDecoration(color: Color(0xFF44403B), shape: BoxShape.circle),
-                      // 오늘 날짜 디자인: 연한 회색
                       todayDecoration: BoxDecoration(color: Color(0xFFE7E5E4), shape: BoxShape.circle),
                       todayTextStyle: TextStyle(color: Color(0xFF44403B), fontWeight: FontWeight.bold, fontSize: 13),
                     ),
-                    // 토요일(파랑), 일요일(빨강) 색상 수정
                     calendarBuilders: CalendarBuilders(
                       dowBuilder: (context, day) {
                         if (day.weekday == DateTime.sunday) return const Center(child: Text('일', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500)));
@@ -195,28 +194,21 @@ class NutritionDialogs {
   static void _saveData(String petName, DateTime date, String weightStr, int? editIndex, VoidCallback onUpdate, BuildContext context) {
     double newWeight = double.tryParse(weightStr) ?? 0.0;
     List<Map<String, dynamic>> history = record.weightHistory[petName] ?? [];
-
-    // 동일한 날짜 중복 추가 금지 (수정 시에는 본인 인덱스 제외)
     bool isDuplicate = history.asMap().entries.any((entry) {
       if (editIndex != null && entry.key == editIndex) return false;
       return isSameDay(entry.value['date'], date);
     });
-
     if (isDuplicate) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("해당 날짜에 이미 기록이 있습니다.")));
       return;
     }
-
     if (editIndex == null) {
       history.add({"date": date, "weight": newWeight});
     } else {
       history[editIndex] = {"date": date, "weight": newWeight};
     }
-
-    // 날짜별 재정렬 (꺾은선 그래프 꼬임 방지)
     history.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
     record.petProfiles[petName]?['weight'] = history.last['weight'].toString();
-
     onUpdate();
     Navigator.pop(context);
   }
@@ -236,16 +228,18 @@ class NutritionDialogs {
     );
   }
 
-  static Widget _buildCompactMenuButton({required String label, required IconData icon, bool isDelete = false, required VoidCallback onTap}) {
+  // ⭐ 버튼 가로 길이를 더 짧게 조정
+  static Widget _buildCompactMenuButton({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE7E5E4))),
+        width: 140,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 16, color: isDelete ? Colors.redAccent : const Color(0xFF44403B)),
+          Icon(icon, size: 16, color: Colors.white),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: isDelete ? Colors.redAccent : const Color(0xFF44403B), fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
         ]),
       ),
     );

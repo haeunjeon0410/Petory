@@ -33,13 +33,9 @@ class _NutritionPageState extends State<NutritionPage> {
     Map<String, dynamic> currentProfile = record.petProfiles[currentPetName] ?? {};
     double profileWeight = double.tryParse(currentProfile['weight']?.toString() ?? '0') ?? 0;
 
-    // 그래프 시작점 고정 로직
+    // 그래프 시작점 고정 로직 (index 0)
     if (currentPetName.isNotEmpty) {
-      if (record.weightHistory[currentPetName] == null) {
-        record.weightHistory[currentPetName] = [];
-      }
-
-      // 시작점이 프로필 체중이 되도록 아주 먼 과거 날짜(예: 2000년)로 첫 데이터를 고정 삽입
+      if (record.weightHistory[currentPetName] == null) record.weightHistory[currentPetName] = [];
       if (record.weightHistory[currentPetName]!.isEmpty && profileWeight > 0) {
         record.weightHistory[currentPetName]!.add({
           "date": DateTime(2000, 1, 1),
@@ -61,7 +57,6 @@ class _NutritionPageState extends State<NutritionPage> {
           children: [
             _buildPetSelectionBar(),
             const SizedBox(height: 20),
-            // undefined 에러 해결: 정확한 클래스 생성자 호출
             FoodCalculatorCard(
               profile: currentProfile,
               foodAmount: foodAmount,
@@ -103,14 +98,7 @@ class _NutritionPageState extends State<NutritionPage> {
                   decoration: BoxDecoration(
                     color: isSelected ? const Color(0xFF44403B) : const Color(0xFFF1F2ED),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF44403B), width: 1.5),boxShadow: [
-                    if (isSelected)
-                      BoxShadow(
-                        color: const Color(0xFF44403B).withOpacity(0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                  ],
+                    border: Border.all(color: const Color(0xFF44403B), width: 1.5),
                   ),
                   child: Text(petName, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFF44403B), fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
