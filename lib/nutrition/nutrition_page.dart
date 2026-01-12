@@ -146,7 +146,7 @@ class _NutritionPageState extends State<NutritionPage> {
                 context: context,
                 builder: (context) => const Dialog(
                   backgroundColor: Colors.transparent,
-                  child: PetRegistrationDialog(),
+                  child: PetRegisterSheet(),
                 ),
               );
               if (result != null) {
