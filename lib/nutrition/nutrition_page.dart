@@ -52,6 +52,7 @@ class _NutritionPageState extends State<NutritionPage> {
         record.myPetIds.add(newId);
         record.petProfiles[newId] = {
           "name": result.name,
+          "type": result.type,
           "species": result.species,
           "age": result.age,
           "height": result.height,
