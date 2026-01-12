@@ -5,6 +5,7 @@ class CommonTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final bool isNumber;
+  final bool noSpecialChars;
   final int maxLines;
   final VoidCallback? onTap;
   final bool readOnly;
@@ -19,6 +20,7 @@ class CommonTextField extends StatelessWidget {
     required this.controller,
     required this.hint,
     this.isNumber = false,
+    this.noSpecialChars = false,
     this.maxLines = 1,
     this.onTap,
     this.readOnly = false,
@@ -58,9 +60,17 @@ class CommonTextField extends StatelessWidget {
             keyboardType: isNumber
                 ? const TextInputType.numberWithOptions(decimal: true)
                 : TextInputType.text,
-            inputFormatters: isNumber
-                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*'))]
-                : [],
+            inputFormatters: [
+              // 1. 숫자만 허용하는 경우
+              if (isNumber)
+                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*')),
+
+              // 2. [추가] 특수문자를 제한하는 경우 (한글, 영어, 숫자, 띄어쓰기만 허용)
+              if (noSpecialChars)
+                FilteringTextInputFormatter.allow(
+                  RegExp(r'[a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣 ]'),
+                ),
+            ],
             onTap: onTap,
             maxLines: maxLines,
             maxLength: maxLength,
