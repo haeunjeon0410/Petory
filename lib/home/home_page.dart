@@ -1,18 +1,20 @@
+import 'dart:io'; // [필수] File 객체 사용을 위해 추가
 import 'package:flutter/material.dart';
+import '../record/record_data.dart' as record;
+
 import 'models/pet_model.dart';
 import 'models/task_model.dart';
 import 'utils/time_helper.dart';
-
 import 'widgets/pet_tab_bar.dart';
 import 'widgets/pet_profile_card.dart';
 import 'widgets/checklist_tile.dart';
-
 import 'sheets/pet_register_sheet.dart';
 import 'sheets/task_editor_sheet.dart';
 import 'sheets/task_detail_dialog.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onRefresh;
+
   const HomePage({super.key, this.onRefresh});
 
   @override
@@ -20,48 +22,19 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // 상태 데이터
-  List<String> myPetIds = [];
-  Map<String, Pet> profiles = {};
-  Map<String, List<Task>> checklists = {};
   int _selectedPetIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    // [수정] 초기 데이터가 없어도 강제로 생성하지 않고 빈 상태로 둡니다.
-    // 필요하다면 _initializeData() 내부 로직을 사용하세요.
-    _initializeData();
-  }
-
-  // (테스트용) 초기 데이터 생성 함수
-  void _initializeData() {
-    if (myPetIds.isEmpty) {
-      String defaultId = DateTime.now().millisecondsSinceEpoch.toString();
-      myPetIds.add(defaultId);
-
-      profiles[defaultId] = Pet(
-        name: "맥스",
-        species: "골든 리트리버",
-        age: "3",
-        height: "60",
-        weight: "32",
-        gender: "male",
-        isNeutered: true,
-        imageAsset: "assets/images/golden.jpg",
-      );
-
-      checklists[defaultId] = [
-        Task(title: "아침 식사", time: "오전 8:00", icon: "🍴", isDone: true),
-        Task(title: "아침 산책", time: "오전 9:00", icon: "🦮", isDone: true),
-        Task(title: "점심 산책", time: "오후 1:00", icon: "🐾", isDone: false),
-      ];
-      _selectedPetIndex = 0;
+    // 초기화 시 record에 선택된 ID가 있다면 인덱스 동기화
+    if (record.myPetIds.isNotEmpty && record.selectedPetId.isNotEmpty) {
+      int idx = record.myPetIds.indexOf(record.selectedPetId);
+      if (idx != -1) _selectedPetIndex = idx;
     }
   }
 
-  // --- 로직 함수들 ---
-
+  // --- 1. 펫 등록/수정 함수 ---
   void _openRegisterSheet({Pet? existingPet}) async {
     final Pet? result = await showDialog(
       context: context,
@@ -75,22 +48,101 @@ class _HomePageState extends State<HomePage> {
 
     if (result != null) {
       setState(() {
-        if (existingPet != null) {
-          // 수정
-          String currentId = myPetIds[_selectedPetIndex];
-          profiles[currentId] = result;
+        // [핵심 수정 1] 이미지 경로 추출
+        // 사용자가 갤러리에서 사진을 골랐다면 imageFile에 값이 있고,
+        // 아니면 기존 에셋(imageAsset)을 유지하거나 null입니다.
+        String? imagePath;
+        if (result.imageFile != null) {
+          imagePath = result.imageFile!.path; // 파일 경로 저장
         } else {
-          // 등록
+          imagePath = result.imageAsset; // 기존 에셋 경로 유지
+        }
+
+        if (existingPet != null) {
+          // [수정 모드]
+          String currentId = record.myPetIds[_selectedPetIndex];
+
+          record.petProfiles[currentId] = {
+            "name": result.name,
+            "type": result.type,
+            "species": result.species,
+            "age": result.age,
+            "height": result.height,
+            "weight": result.weight,
+            "gender": result.gender,
+            "isNeutered": result.isNeutered,
+            "imagePath": imagePath, // [저장] 이미지 경로 저장
+          };
+        } else {
+          // [새 등록 모드]
           String newId = DateTime.now().millisecondsSinceEpoch.toString();
-          myPetIds.add(newId);
-          profiles[newId] = result;
-          checklists[newId] = [];
-          _selectedPetIndex = myPetIds.length - 1;
+
+          record.myPetIds.add(newId);
+          record.petProfiles[newId] = {
+            "name": result.name,
+            "type": result.type,
+            "species": result.species,
+            "age": result.age,
+            "height": result.height,
+            "weight": result.weight,
+            "gender": result.gender,
+            "isNeutered": result.isNeutered,
+            "imagePath": imagePath, // [저장]
+          };
+
+          record.petChecklists[newId] = [];
+          _selectedPetIndex = record.myPetIds.length - 1;
+          record.selectedPetId = newId;
         }
       });
+
+      widget.onRefresh?.call();
     }
   }
 
+  // --- 2. 펫 삭제 함수 (기존 동일) ---
+  void _deletePet(String petId, String petName) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("반려동물 삭제"),
+        content: Text("'$petName' 프로필을 삭제하시겠습니까?"),
+        backgroundColor: Colors.white,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("취소", style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                record.myPetIds.remove(petId);
+                record.petProfiles.remove(petId);
+                record.petChecklists.remove(petId);
+
+                if (_selectedPetIndex >= record.myPetIds.length) {
+                  _selectedPetIndex = record.myPetIds.length - 1;
+                }
+                if (_selectedPetIndex < 0) _selectedPetIndex = 0;
+
+                if (record.myPetIds.isNotEmpty) {
+                  record.selectedPetId = record.myPetIds[_selectedPetIndex];
+                } else {
+                  record.selectedPetId = "";
+                }
+              });
+
+              widget.onRefresh?.call();
+            },
+            child: const Text("삭제", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 체크리스트 관련 함수들 (기존 동일)
   void _openTaskSheet(
     String petId, {
     int? editIndex,
@@ -108,10 +160,21 @@ class _HomePageState extends State<HomePage> {
 
     if (result != null) {
       setState(() {
+        Map<String, dynamic> taskMap = {
+          "title": result.title,
+          "time": result.time,
+          "icon": result.icon,
+          "isDone": result.isDone,
+        };
+
+        if (record.petChecklists[petId] == null) {
+          record.petChecklists[petId] = [];
+        }
+
         if (editIndex != null) {
-          checklists[petId]![editIndex] = result;
+          record.petChecklists[petId]![editIndex] = taskMap;
         } else {
-          checklists[petId]!.add(result);
+          record.petChecklists[petId]!.add(taskMap);
         }
       });
     }
@@ -124,33 +187,79 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- 화면 빌드 ---
   @override
   Widget build(BuildContext context) {
-    // [핵심 변경 1] 빈 화면 반환 코드 삭제 (이제 아래 UI를 무조건 그립니다)
-    // if (myPetIds.isEmpty) return Container(...);
+    final bool hasPet = record.myPetIds.isNotEmpty;
 
-    // [핵심 변경 2] 데이터가 있는지 확인하여 변수 할당
-    final bool hasPet = myPetIds.isNotEmpty;
+    // 현재 선택된 ID 확인 (동기화)
+    if (hasPet && record.selectedPetId.isNotEmpty) {
+      int idx = record.myPetIds.indexOf(record.selectedPetId);
+      if (idx != -1) {
+        _selectedPetIndex = idx;
+      }
+    }
 
-    // 펫이 없으면 null 처리
-    String? currentId = hasPet ? myPetIds[_selectedPetIndex] : null;
-    Pet? currentPet = hasPet ? profiles[currentId] : null;
-    List<Task> currentTasks = hasPet ? (checklists[currentId] ?? []) : [];
-
-    // 정렬 (펫이 있을 때만)
+    String? currentId;
     if (hasPet) {
+      if (_selectedPetIndex >= record.myPetIds.length) _selectedPetIndex = 0;
+      currentId = record.myPetIds[_selectedPetIndex];
+      // 탭바 변경 시 전역 변수 업데이트는 onTap에서 처리함
+    }
+
+    // 데이터 가져오기
+    Pet? currentPet;
+    List<Task> currentTasks = [];
+
+    if (hasPet && currentId != null) {
+      var pData = record.petProfiles[currentId];
+      if (pData != null) {
+        // [핵심 수정 2] 이미지 경로 처리 로직
+        String? imgPath = pData['imagePath'];
+        File? imgFile;
+        String? imgAsset;
+
+        // 경로가 있고, 파일 시스템 경로(/data/...)라면 File 객체 생성
+        if (imgPath != null && !imgPath.startsWith('assets')) {
+          imgFile = File(imgPath);
+        } else {
+          // assets 경로거나 null이면 기본 이미지 사용
+          imgAsset = imgPath ?? "assets/images/golden.jpg";
+        }
+
+        currentPet = Pet(
+          name: pData['name'] ?? '',
+          type: pData['type'] ?? '강아지',
+          species: pData['species'] ?? '',
+          age: pData['age'] ?? '',
+          height: pData['height'] ?? '',
+          weight: pData['weight'] ?? '',
+          gender: pData['gender'] ?? 'male',
+          isNeutered: pData['isNeutered'] ?? false,
+          imageFile: imgFile, // [적용] 파일 이미지
+          imageAsset: imgAsset, // [적용] 에셋 이미지
+        );
+      }
+
+      var cList = record.petChecklists[currentId];
+      if (cList != null) {
+        currentTasks = cList
+            .map(
+              (t) => Task(
+                title: t['title'],
+                time: t['time'],
+                icon: t['icon'].toString(),
+                isDone: t['isDone'],
+              ),
+            )
+            .toList();
+      }
+
       currentTasks.sort(
         (a, b) => TimeHelper.parseTimeToMinutes(
           a.time,
         ).compareTo(TimeHelper.parseTimeToMinutes(b.time)),
       );
     }
-
-    // 이름 리스트 (없으면 빈 리스트)
-    List<String> displayNames = hasPet
-        ? myPetIds.map((id) => profiles[id]!.name).toList()
-        : [];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
@@ -159,29 +268,32 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 상단 탭바 (펫이 없어도 추가 버튼은 보여야 함)
             PetTabBar(
-              petNames: displayNames,
-              selectedIndex: _selectedPetIndex,
-              onTap: (index) => setState(() => _selectedPetIndex = index),
+              petIds: record.myPetIds, // [변경] ID 리스트 전달
+              petProfiles: record.petProfiles, // [변경] 프로필 데이터 전달
+              selectedId: record.selectedPetId, // [변경] 현재 ID 전달
+              onTap: (id) => setState(() {
+                _selectedPetIndex = record.myPetIds.indexOf(id);
+                record.selectedPetId = id;
+                widget.onRefresh?.call();
+              }),
               onAdd: () => _openRegisterSheet(),
             ),
 
             const SizedBox(height: 20),
 
-            // 2. 프로필 카드 (펫이 없으면 안내 문구 표시)
             if (hasPet && currentPet != null)
               PetProfileCard(
                 pet: currentPet,
                 onEdit: () => _openRegisterSheet(existingPet: currentPet),
-                onDelete: () => _deletePet(currentId!, currentPet.name),
+                onDelete: () => _deletePet(currentId!, currentPet!.name),
               )
             else
-              _buildEmptyProfileCard(), // [추가] 빈 프로필 카드 위젯
+              _buildEmptyProfileCard(),
 
             const SizedBox(height: 30),
 
-            // 3. 체크리스트 헤더
+            // ... 체크리스트 UI (기존 동일) ...
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -194,7 +306,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 GestureDetector(
-                  // 펫이 없으면 버튼 눌러도 반응 없거나 안내 메시지
                   onTap: () {
                     if (hasPet && currentId != null) {
                       _openTaskSheet(currentId);
@@ -218,7 +329,6 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 15),
 
-            // 4. 체크리스트 목록
             currentTasks.isEmpty
                 ? _buildEmptyState()
                 : ListView.separated(
@@ -232,7 +342,8 @@ class _HomePageState extends State<HomePage> {
                         task: task,
                         onToggle: () {
                           setState(() {
-                            task.isDone = !task.isDone;
+                            record.petChecklists[currentId]![index]['isDone'] =
+                                !task.isDone;
                           });
                         },
                         onTap: () => _showDetailDialog(task),
@@ -243,7 +354,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         onDelete: () {
                           setState(() {
-                            checklists[currentId]!.removeAt(index);
+                            record.petChecklists[currentId]!.removeAt(index);
                           });
                         },
                       );
@@ -256,45 +367,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // [추가] 펫 삭제 로직 분리
-  void _deletePet(String petId, String petName) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("반려동물 삭제"),
-        content: Text("'$petName' 프로필을 삭제하시겠습니까?"),
-        backgroundColor: Colors.white,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("취소", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                myPetIds.removeAt(_selectedPetIndex);
-                profiles.remove(petId);
-                checklists.remove(petId);
-
-                if (_selectedPetIndex >= myPetIds.length) {
-                  _selectedPetIndex = myPetIds.length - 1;
-                }
-                if (_selectedPetIndex < 0) _selectedPetIndex = 0;
-              });
-            },
-            child: const Text("삭제", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // [추가] 프로필이 없을 때 보여줄 안내 카드
+  // ... (하단 Widget 빌더 함수들은 기존과 동일) ...
   Widget _buildEmptyProfileCard() {
     return Container(
       width: double.infinity,
-      // [핵심 1] 등록된 프로필 카드와 똑같은 패딩(20)을 줍니다.
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -308,9 +384,8 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      // [핵심 2] 내부 높이를 프로필 사진 크기(76)만큼 강제로 지정합니다.
       child: const SizedBox(
-        height: 88,
+        height: 76,
         child: Center(
           child: Text(
             "상단의 (+) 버튼을 이용해\n반려동물 프로필을 등록해주세요!",
@@ -318,7 +393,7 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(
               color: Colors.grey,
               fontSize: 15,
-              height: 1.4, // 줄간격
+              height: 1.4,
               fontWeight: FontWeight.w500,
             ),
           ),

@@ -121,7 +121,7 @@ class _MainPageState extends State<MainPage> {
                                           s.date,
                                         );
                                         final petSchedules =
-                                            record.schedules[s.petName];
+                                            record.schedules[s.petId];
                                         if (petSchedules != null &&
                                             petSchedules[key] != null) {
                                           final list = petSchedules[key]!;
@@ -137,7 +137,7 @@ class _MainPageState extends State<MainPage> {
 
                                           if (idx != -1) {
                                             list[idx] = record.Schedule(
-                                              petName: s.petName,
+                                              petId: s.petId,
                                               date: s.date,
                                               title: s.title,
                                               content: s.content,
@@ -206,7 +206,8 @@ class _MainPageState extends State<MainPage> {
                                                     text: TextSpan(
                                                       children: [
                                                         TextSpan(
-                                                          text: '${s.petName} ',
+                                                          text:
+                                                              '${record.petProfiles[s.petId]?['name'] ?? '알 수 없음'} ',
                                                           style: TextStyle(
                                                             fontSize: 12,
                                                             color: s.color,
