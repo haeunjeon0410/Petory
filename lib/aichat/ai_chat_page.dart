@@ -33,24 +33,34 @@ class _AiChatPageState extends State<AiChatPage> {
     super.dispose();
   }
 
+  String _getCurrentPetName() {
+    final petId = record.selectedPetId;
+    if (petId.isEmpty || record.petProfiles[petId] == null) {
+      return "반려동물"; // 기본값
+    }
+    return record.petProfiles[petId]!['name']?.toString() ?? "반려동물";
+  }
+
   void _initGemini() {
     const String apiKey = 'AIzaSyAst0clfoDv3fJgAyXs5oIS0KtQyD3CvF4';
+
+    String petName = _getCurrentPetName();
 
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: apiKey,
       // 하은님 스타일의 알잘딱깔센 프롬프트
       systemInstruction: Content.system(
-          "당신은 `${record.selectedPetName}`의 전담 건강 매니저 '펫토리 닥터'입니다. "
-              "다음 원칙을 지켜 답변하세요. "
-              "1. 호칭: 사용자를 반드시 `${record.selectedPetName} 보호자님`이라고 부르세요. "
-              "2. 요약 중심: 서론은 생략하고 가장 중요한 핵심 결론부터 바로 말하세요. "
-              "3. 구조화: 불렛 포인트(-)를 사용하여 행동 요령을 최대 3까지만 제시하세요. "
-              "4. 길이 제한: 전체 답변은 150자 이내, 3~4줄 정도로 짧게 유지하세요. "
-              "5. 응급 안내: 위급 상황 시 맨 앞에 [🚨] 표시를 붙이고 즉시 병원 방문을 권고하세요. "
-              "6. 금지 사항: 텍스트에 ** 기호(마크다운 굵기)를 절대 적지 마세요. "
-              "7. 센스 있는 마무리: 답변 끝에 보호자님이 대답할 수 있는 짧은 질문이나 관련 제안을 한 줄 추가하세요."
-              "8. 말투 : 이모티콘을 적절히 사용해 친절하게 한국어로 답변하세요."
+        "당신은 `$petName`의 전담 건강 매니저 '펫토리 닥터'입니다. "
+        "다음 원칙을 지켜 답변하세요. "
+        "1. 호칭: 사용자를 반드시 `$petName 보호자님`이라고 부르세요. "
+        "2. 요약 중심: 서론은 생략하고 가장 중요한 핵심 결론부터 바로 말하세요. "
+        "3. 구조화: 불렛 포인트(-)를 사용하여 행동 요령을 최대 3까지만 제시하세요. "
+        "4. 길이 제한: 전체 답변은 150자 이내, 3~4줄 정도로 짧게 유지하세요. "
+        "5. 응급 안내: 위급 상황 시 맨 앞에 [🚨] 표시를 붙이고 즉시 병원 방문을 권고하세요. "
+        "6. 금지 사항: 텍스트에 ** 기호(마크다운 굵기)를 절대 적지 마세요. "
+        "7. 센스 있는 마무리: 답변 끝에 보호자님이 대답할 수 있는 짧은 질문이나 관련 제안을 한 줄 추가하세요."
+        "8. 말투 : 이모티콘을 적절히 사용해 친절하게 한국어로 답변하세요.",
       ),
     );
 
@@ -76,7 +86,7 @@ class _AiChatPageState extends State<AiChatPage> {
         ChatMessage(
           text: "안녕하세요! 펫토리 닥터입니다.😊 어떻게 도와드릴까요?",
           isMe: false,
-          petName: record.selectedPetName,
+          petName: _getCurrentPetName(),
           timestamp: DateTime.now(),
         ),
       ];
@@ -85,7 +95,9 @@ class _AiChatPageState extends State<AiChatPage> {
 
   Future<void> _handleSendMessage(String text) async {
     setState(() {
-      _messages.add(ChatMessage(text: text, isMe: true, timestamp: DateTime.now()));
+      _messages.add(
+        ChatMessage(text: text, isMe: true, timestamp: DateTime.now()),
+      );
       _isLoading = true;
     });
     _scrollToBottom(); // 내 메시지 전송 후 스크롤
@@ -94,21 +106,25 @@ class _AiChatPageState extends State<AiChatPage> {
       final response = await _chatSession.sendMessage(Content.text(text));
 
       setState(() {
-        _messages.add(ChatMessage(
-          text: response.text ?? "죄송해요, 답변을 생성하지 못했어요.",
-          isMe: false,
-          petName: record.selectedPetName,
-          timestamp: DateTime.now(),
-        ));
+        _messages.add(
+          ChatMessage(
+            text: response.text ?? "죄송해요, 답변을 생성하지 못했어요.",
+            isMe: false,
+            petName: _getCurrentPetName(),
+            timestamp: DateTime.now(),
+          ),
+        );
       });
       _scrollToBottom(); // AI 답변 후 스크롤
     } catch (e) {
       setState(() {
-        _messages.add(ChatMessage(
-          text: "서버 연결에 문제가 생겼어요. 다시 시도해주세요.",
-          isMe: false,
-          timestamp: DateTime.now(),
-        ));
+        _messages.add(
+          ChatMessage(
+            text: "서버 연결에 문제가 생겼어요. 다시 시도해주세요.",
+            isMe: false,
+            timestamp: DateTime.now(),
+          ),
+        );
       });
       _scrollToBottom();
     } finally {
@@ -130,8 +146,8 @@ class _AiChatPageState extends State<AiChatPage> {
               itemBuilder: (context, index) {
                 // 각 메시지에 고유 키를 주어 타이핑 효과가 올바르게 작동하게 함
                 return ChatBubble(
-                    key: ValueKey(_messages[index].timestamp),
-                    message: _messages[index]
+                  key: ValueKey(_messages[index].timestamp),
+                  message: _messages[index],
                 );
               },
             ),
@@ -140,7 +156,14 @@ class _AiChatPageState extends State<AiChatPage> {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Center(
-                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF44403B))),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF44403B),
+                  ),
+                ),
               ),
             ),
           ChatInputField(onSendMessage: _handleSendMessage),
