@@ -1,316 +1,190 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter/services.dart'; // [필수] 입력 제한(Formatter) 사용을 위해 추가
 import '../record/record_data.dart' as record;
-import '../home/widgets/common_text_field.dart'; // CommonTextField 위치에 맞게 경로 수정 필요
 
 class NutritionDialogs {
-  // [체중 등록 다이얼로그]
   static void showWeightDialog(
     BuildContext context,
-    String petName, {
+    String petId,
+    DateTime date, {
     required VoidCallback onUpdate,
   }) {
-    DateTime selectedDate = DateTime.now();
-    TextEditingController weightController = TextEditingController();
-    FocusNode weightFocus = FocusNode();
+    final TextEditingController weightController = TextEditingController();
+    final FocusNode focusNode = FocusNode(); // 포커스 제어를 위한 노드
+
+    // 기존 데이터가 있다면 불러오기
+    if (record.weightHistory[petId] != null) {
+      var existing = record.weightHistory[petId]!.firstWhere((e) {
+        DateTime d = e['date'];
+        return d.year == date.year &&
+            d.month == date.month &&
+            d.day == date.day;
+      }, orElse: () => {});
+      if (existing.isNotEmpty) {
+        weightController.text = existing['weight'].toString();
+      }
+    }
 
     showDialog(
       context: context,
       builder: (context) {
-        String? errorText;
+        // [수정] 에러 메시지를 담을 변수 (null이면 에러 없음)
+        String? errorMsg;
 
         return StatefulBuilder(
           builder: (context, setState) {
-            return Dialog(
+            return AlertDialog(
               backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "체중 등록",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF44403B),
-                      ),
+              title: const Text(
+                "체중 등록",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: weightController,
+                    focusNode: focusNode,
+                    maxLength: 6,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
-                    const SizedBox(height: 20),
+                    cursorColor: Colors.black, // 커서 색상 검은색 고정
+                    // 숫자와 소수점만 입력 가능하도록 제한
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    ],
 
-                    // 날짜 선택
-                    GestureDetector(
-                      onTap: () async {
-                        DateTime? picked = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now(),
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: const ColorScheme.light(
-                                  primary: Color(0xFF44403B),
-                                  onPrimary: Colors.white,
-                                  onSurface: Color(0xFF44403B),
-                                ),
-                              ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (picked != null) {
-                          setState(() => selectedDate = picked);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE7E5E4)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              DateFormat('yyyy. MM. dd').format(selectedDate),
-                              style: const TextStyle(color: Color(0xFF44403B)),
-                            ),
-                            const Icon(
-                              Icons.calendar_today,
-                              size: 16,
-                              color: Color(0xFF605A55),
-                            ),
-                          ],
+                    decoration: InputDecoration(
+                      hintText: "체중을 입력해주세요 (kg)",
+                      counterText: "",
+                      filled: true,
+                      fillColor: const Color(0xFFF5F5F0),
+
+                      // [수정] 에러 메시지가 있으면 자동으로 빨간 테두리와 문구가 표시됨
+                      errorText: errorMsg,
+
+                      // 평소 테두리 (없음)
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+
+                      // 포커스 됐을 때 테두리 (없음)
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+
+                      // [추가] 에러 발생 시 테두리 (빨간색)
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Colors.red,
+                          width: 1.5,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
 
-                    // 체중 입력 필드 (CommonTextField 사용)
-                    CommonTextField(
-                      controller: weightController,
-                      focusNode: weightFocus,
-                      hint: "체중을 입력해주세요",
-                      isNumber: true, // 숫자와 소수점만 입력 허용
-                      maxLength: 6,
-                      errorText: errorText,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 버튼 영역
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text(
-                            "취소",
-                            style: TextStyle(color: Color(0xFF605A55)),
-                          ),
+                      // [추가] 에러 상태에서 포커스 시 테두리 (빨간색)
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Colors.red,
+                          width: 1.5,
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            // [검증 로직]
-                            String text = weightController.text.trim();
+                      ),
 
-                            if (text.isEmpty) {
-                              setState(() => errorText = "체중을 입력해주세요");
-                              weightFocus.requestFocus();
-                              return;
-                            }
-
-                            double? w = double.tryParse(text);
-                            if (w == null) {
-                              setState(() => errorText = "숫자만 입력해주세요");
-                              weightFocus.requestFocus();
-                              return;
-                            }
-
-                            if (w >= 1000) {
-                              setState(
-                                () => errorText = "체중은 1000kg 미만이어야 합니다",
-                              );
-                              weightFocus.requestFocus();
-                              return;
-                            }
-
-                            // 저장 로직
-                            String currentId = record.selectedPetId;
-                            if (record.weightHistory[currentId] == null) {
-                              record.weightHistory[currentId] = [];
-                            }
-
-                            // 같은 날짜 중복 제거
-                            record.weightHistory[currentId]!.removeWhere((h) {
-                              DateTime d = h['date'];
-                              return d.year == selectedDate.year &&
-                                  d.month == selectedDate.month &&
-                                  d.day == selectedDate.day;
-                            });
-
-                            record.weightHistory[currentId]!.add({
-                              "date": selectedDate,
-                              "weight": w,
-                            });
-
-                            onUpdate(); // 화면 갱신 콜백 호출
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF44403B),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                          ),
-                          child: const Text(
-                            "확인",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
-                  ],
+
+                    // 입력 시작하면 에러 메시지 초기화
+                    onChanged: (value) {
+                      if (errorMsg != null) {
+                        setState(() {
+                          errorMsg = null;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("취소", style: TextStyle(color: Colors.grey)),
                 ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // [편집/삭제 다이얼로그] - WeightTrendCard에서 그래프 클릭 시 사용됨
-  static void showEditDeleteDialog({
-    required BuildContext context,
-    required String petName,
-    required int index,
-    required VoidCallback onUpdate,
-  }) {
-    String currentId = record.selectedPetId;
-    List<Map<String, dynamic>> history = record.weightHistory[currentId] ?? [];
-    if (index < 0 || index >= history.length) return;
-
-    Map<String, dynamic> data = history[index];
-    DateTime selectedDate = data['date'];
-    TextEditingController weightController = TextEditingController(
-      text: data['weight'].toString(),
-    );
-    FocusNode weightFocus = FocusNode();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        String? errorText;
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "기록 수정",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF44403B),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 20),
-
-                    // CommonTextField 사용
-                    CommonTextField(
-                      controller: weightController,
-                      focusNode: weightFocus,
-                      hint: "체중 (kg)",
-                      isNumber: true,
-                      maxLength: 6,
-                      errorText: errorText,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
                     ),
+                  ),
+                  onPressed: () {
+                    final String text = weightController.text.trim();
+                    final double? newWeight = double.tryParse(text);
 
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            record.weightHistory[currentId]!.removeAt(index);
-                            onUpdate();
-                            Navigator.pop(context);
-                          },
-                          child: const Text(
-                            "삭제",
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            String text = weightController.text.trim();
+                    // [로직 수정] 상황별 에러 메시지 설정
+                    if (text.isEmpty) {
+                      setState(() {
+                        errorMsg = "체중을 입력해주세요.";
+                      });
+                      FocusScope.of(context).requestFocus(focusNode);
+                    } else if (newWeight == null) {
+                      setState(() {
+                        errorMsg = "숫자만 입력해주세요.";
+                      });
+                      FocusScope.of(context).requestFocus(focusNode);
+                    } else if (newWeight >= 1000) {
+                      // [요청 사항] 1000kg 이상일 때 안내 문구
+                      setState(() {
+                        errorMsg = "1000kg 미만으로 입력해주세요.";
+                      });
+                      FocusScope.of(context).requestFocus(focusNode);
+                    } else {
+                      // 정상 입력
+                      if (record.weightHistory[petId] == null) {
+                        record.weightHistory[petId] = [];
+                      }
 
-                            if (text.isEmpty) {
-                              setState(() => errorText = "체중을 입력해주세요");
-                              weightFocus.requestFocus();
-                              return;
-                            }
+                      // 해당 날짜의 기존 기록 삭제 (덮어쓰기)
+                      record.weightHistory[petId]!.removeWhere((item) {
+                        DateTime d = item['date'];
+                        return d.year == date.year &&
+                            d.month == date.month &&
+                            d.day == date.day;
+                      });
 
-                            double? w = double.tryParse(text);
-                            if (w == null) {
-                              setState(() => errorText = "숫자만 입력해주세요");
-                              weightFocus.requestFocus();
-                              return;
-                            }
+                      // 새 기록 추가
+                      record.weightHistory[petId]!.add({
+                        "date": date,
+                        "weight": newWeight,
+                      });
 
-                            if (w >= 1000) {
-                              setState(
-                                () => errorText = "체중은 1000kg 미만이어야 합니다",
-                              );
-                              weightFocus.requestFocus();
-                              return;
-                            }
-
-                            record.weightHistory[currentId]![index] = {
-                              "date": selectedDate,
-                              "weight": w,
-                            };
-                            onUpdate();
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF44403B),
-                          ),
-                          child: const Text(
-                            "수정",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
+                      onUpdate();
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Text(
+                    "확인",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             );
           },
         );
