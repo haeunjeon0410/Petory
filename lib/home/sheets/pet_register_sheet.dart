@@ -479,20 +479,51 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
       return;
     }
 
-    // 6. 키 검사
-    if (_heightController.text.trim().isEmpty) {
+    // ------------------------------------------------------------
+    // [수정] 6. 키 검사 (10000cm 미만 제한 추가)
+    // ------------------------------------------------------------
+    String heightText = _heightController.text.trim();
+    if (heightText.isEmpty) {
       setState(() => _heightError = "키를 입력해주세요");
       _scrollToErrorField(_heightKey, focusNode: _heightFocus);
       return;
+    } else {
+      double? h = double.tryParse(heightText);
+      if (h == null) {
+        setState(() => _heightError = "숫자만 입력해주세요");
+        _scrollToErrorField(_heightKey, focusNode: _heightFocus);
+        return;
+      }
+      if (h >= 10000) {
+        // [추가된 로직]
+        setState(() => _heightError = "키는 10000cm 미만이어야 합니다");
+        _scrollToErrorField(_heightKey, focusNode: _heightFocus);
+        return;
+      }
     }
 
-    // 7. 체중 검사
-    if (_weightController.text.trim().isEmpty) {
+    // ------------------------------------------------------------
+    // [수정] 7. 체중 검사 (1000kg 미만 제한 추가)
+    // ------------------------------------------------------------
+    String weightText = _weightController.text.trim();
+    if (weightText.isEmpty) {
       setState(() => _weightError = "체중을 입력해주세요");
       _scrollToErrorField(_weightKey, focusNode: _weightFocus);
       return;
+    } else {
+      double? w = double.tryParse(weightText);
+      if (w == null) {
+        setState(() => _weightError = "숫자만 입력해주세요");
+        _scrollToErrorField(_weightKey, focusNode: _weightFocus);
+        return;
+      }
+      if (w >= 1000) {
+        // [추가된 로직]
+        setState(() => _weightError = "체중은 1000kg 미만이어야 합니다");
+        _scrollToErrorField(_weightKey, focusNode: _weightFocus);
+        return;
+      }
     }
-
     // 8. 중성화 검사
     if (_isNeutered == null) {
       setState(() => _neuteredError = "중성화 여부를 선택해주세요");

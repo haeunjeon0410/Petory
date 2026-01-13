@@ -1,512 +1,320 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart';
 import '../record/record_data.dart' as record;
+import '../home/widgets/common_text_field.dart'; // [필수] CommonTextField 사용을 위해 import
 
 class NutritionDialogs {
-  // 기록 관리 다이얼로그 - 너비를 더 좁게(insetPadding 증가) 조정
+  // [체중 등록 다이얼로그]
+  static void showWeightDialog(
+    BuildContext context,
+    String petName, {
+    required VoidCallback onUpdate,
+  }) {
+    DateTime selectedDate = DateTime.now();
+    TextEditingController weightController = TextEditingController();
+    FocusNode weightFocus = FocusNode();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        String? errorText;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "체중 등록",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF44403B),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // 날짜 선택
+                    GestureDetector(
+                      onTap: () async {
+                        DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: Color(0xFF44403B),
+                                  onPrimary: Colors.white,
+                                  onSurface: Color(0xFF44403B),
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setState(() => selectedDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE7E5E4)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              DateFormat('yyyy. MM. dd').format(selectedDate),
+                              style: const TextStyle(color: Color(0xFF44403B)),
+                            ),
+                            const Icon(
+                              Icons.calendar_today,
+                              size: 16,
+                              color: Color(0xFF605A55),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // [수정] CommonTextField 사용 (프로필 등록과 동일한 디자인/기능)
+                    CommonTextField(
+                      controller: weightController,
+                      focusNode: weightFocus,
+                      hint: "체중을 입력해주세요",
+                      isNumber: true, // 숫자와 소수점만 입력 허용
+                      maxLength: 5, // 길이 제한
+                      errorText: errorText, // 에러 메시지 표시
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // 버튼 영역
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            "취소",
+                            style: TextStyle(color: Color(0xFF605A55)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            // [검증 로직]
+                            String text = weightController.text.trim();
+
+                            if (text.isEmpty) {
+                              setState(() => errorText = "체중을 입력해주세요");
+                              weightFocus.requestFocus(); // 포커스 이동
+                              return;
+                            }
+
+                            double? w = double.tryParse(text);
+                            if (w == null) {
+                              setState(() => errorText = "숫자만 입력해주세요");
+                              weightFocus.requestFocus();
+                              return;
+                            }
+
+                            if (w >= 1000) {
+                              setState(
+                                () => errorText = "체중은 1000kg 미만이어야 합니다",
+                              );
+                              weightFocus.requestFocus();
+                              return;
+                            }
+
+                            // 저장 로직
+                            String currentId = record.selectedPetId;
+                            if (record.weightHistory[currentId] == null) {
+                              record.weightHistory[currentId] = [];
+                            }
+
+                            // 같은 날짜 중복 제거
+                            record.weightHistory[currentId]!.removeWhere((h) {
+                              DateTime d = h['date'];
+                              return d.year == selectedDate.year &&
+                                  d.month == selectedDate.month &&
+                                  d.day == selectedDate.day;
+                            });
+
+                            record.weightHistory[currentId]!.add({
+                              "date": selectedDate,
+                              "weight": w,
+                            });
+
+                            onUpdate();
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF44403B),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: const Text(
+                            "확인",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // [편집/삭제 다이얼로그]
   static void showEditDeleteDialog({
     required BuildContext context,
     required String petName,
     required int index,
     required VoidCallback onUpdate,
   }) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: const Color(0xFFF1F2ED),
-        // ⭐ 바의 길이를 짧게 하기 위해 좌우 패딩을 더 넓게 설정
-        insetPadding: const EdgeInsets.symmetric(horizontal: 100),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                "기록 관리",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF44403B),
-                ),
-              ),
-              const SizedBox(height: 18),
-              _buildCompactMenuButton(
-                label: "수정",
-                icon: Icons.edit_note_rounded,
-                color: const Color(0xFF44403B),
-                onTap: () {
-                  Navigator.pop(context);
-                  showWeightDialog(
-                    context,
-                    petName,
-                    editIndex: index,
-                    onUpdate: onUpdate,
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              _buildCompactMenuButton(
-                label: "삭제",
-                icon: Icons.delete_sweep_rounded,
-                color: const Color(0xFF605A55),
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmDelete(context, petName, index, onUpdate);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+    String currentId = record.selectedPetId;
+    List<Map<String, dynamic>> history = record.weightHistory[currentId] ?? [];
+    if (index < 0 || index >= history.length) return;
 
-  // 체중 입력 다이얼로그 (기존 로직 유지)
-  static void showWeightDialog(
-    BuildContext context,
-    String petName, {
-    int? editIndex,
-    required VoidCallback onUpdate,
-    DateTime? initialDate,
-    String? initialWeight,
-  }) {
+    Map<String, dynamic> data = history[index];
+    DateTime selectedDate = data['date'];
     TextEditingController weightController = TextEditingController(
-      text: initialWeight,
+      text: data['weight'].toString(),
     );
-    DateTime selectedDate = initialDate ?? DateTime.now();
-
-    if (editIndex != null && initialDate == null && initialWeight == null) {
-      weightController.text = record
-          .weightHistory[petName]![editIndex]['weight']
-          .toString();
-      selectedDate = record.weightHistory[petName]![editIndex]['date'];
-    }
+    FocusNode weightFocus = FocusNode();
 
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFF1F2ED),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-        title: Text(
-          editIndex == null ? '체중 등록' : '기록 수정',
-          style: const TextStyle(
-            color: Color(0xFF44403B),
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: SizedBox(
-          width: 230,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  _showCalendarPicker(
-                    context,
-                    petName,
-                    editIndex: editIndex,
-                    onUpdate: onUpdate,
-                    currentDate: selectedDate,
-                    currentWeight: weightController.text,
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        DateFormat('yyyy. MM. dd').format(selectedDate),
-                        style: const TextStyle(
-                          color: Color(0xFF44403B),
-                          fontSize: 13,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.calendar_today_rounded,
-                        size: 13,
-                        color: Color(0xFF605A55),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: weightController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: const TextStyle(fontSize: 13),
-                maxLength: 5,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-                decoration: InputDecoration(
-                  hintText: "체중을 입력해주세요",
-                  hintStyle: const TextStyle(
-                    color: Color(0xFFA8A29E),
-                    fontSize: 12,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  counterText: "",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 16),
-        actions: [
-          _buildSmallButton(
-            label: "취소",
-            isPrimary: false,
-            onTap: () => Navigator.pop(context),
-          ),
-          _buildSmallButton(
-            label: editIndex == null ? "확인" : "변경",
-            isPrimary: true,
-            onTap: () {
-              final input = weightController.text;
-              if (input.isNotEmpty && double.tryParse(input) != null) {
-                _saveData(
-                  petName,
-                  selectedDate,
-                  input,
-                  editIndex,
-                  onUpdate,
-                  context,
-                );
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
+      builder: (context) {
+        String? errorText;
 
-  // 달력 다이얼로그 (기존 요일 색상 반영)
-  static void _showCalendarPicker(
-    BuildContext context,
-    String petName, {
-    int? editIndex,
-    required VoidCallback onUpdate,
-    required DateTime currentDate,
-    required String currentWeight,
-  }) {
-    DateTime tempDate = currentDate;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFFF1F2ED),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(32),
-          ),
-          title: const Text(
-            '날짜 선택',
-            style: TextStyle(
-              color: Color(0xFF44403B),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.85,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: TableCalendar(
-                    locale: 'ko_KR',
-                    firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.now(),
-                    focusedDay: tempDate,
-                    selectedDayPredicate: (day) => isSameDay(tempDate, day),
-                    headerStyle: const HeaderStyle(
-                      formatButtonVisible: false,
-                      titleCentered: true,
-                    ),
-                    calendarStyle: const CalendarStyle(
-                      selectedDecoration: BoxDecoration(
-                        color: Color(0xFF44403B),
-                        shape: BoxShape.circle,
-                      ),
-                      todayDecoration: BoxDecoration(
-                        color: Color(0xFFE7E5E4),
-                        shape: BoxShape.circle,
-                      ),
-                      todayTextStyle: TextStyle(
-                        color: Color(0xFF44403B),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "기록 수정",
+                      style: TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
                       ),
                     ),
-                    calendarBuilders: CalendarBuilders(
-                      dowBuilder: (context, day) {
-                        if (day.weekday == DateTime.sunday)
-                          return const Center(
-                            child: Text(
-                              '일',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          );
-                        if (day.weekday == DateTime.saturday)
-                          return const Center(
-                            child: Text(
-                              '토',
-                              style: TextStyle(
-                                color: Colors.blue,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          );
-                        return null;
-                      },
-                      defaultBuilder: (context, day, focusedDay) {
-                        if (day.weekday == DateTime.sunday)
-                          return Center(
-                            child: Text(
-                              '${day.day}',
-                              style: const TextStyle(
-                                color: Colors.red,
-                                fontSize: 13,
-                              ),
-                            ),
-                          );
-                        if (day.weekday == DateTime.saturday)
-                          return Center(
-                            child: Text(
-                              '${day.day}',
-                              style: const TextStyle(
-                                color: Colors.blue,
-                                fontSize: 13,
-                              ),
-                            ),
-                          );
-                        return null;
-                      },
+                    const SizedBox(height: 20),
+
+                    // [수정] CommonTextField 사용
+                    CommonTextField(
+                      controller: weightController,
+                      focusNode: weightFocus,
+                      hint: "체중 (kg)",
+                      isNumber: true,
+                      maxLength: 6,
+                      errorText: errorText,
                     ),
-                    onDaySelected: (selectedDay, focusedDay) =>
-                        setDialogState(() => tempDate = selectedDay),
-                  ),
+
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            record.weightHistory[currentId]!.removeAt(index);
+                            onUpdate();
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            "삭제",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            String text = weightController.text.trim();
+
+                            if (text.isEmpty) {
+                              setState(() => errorText = "체중을 입력해주세요");
+                              weightFocus.requestFocus();
+                              return;
+                            }
+
+                            double? w = double.tryParse(text);
+                            if (w == null) {
+                              setState(() => errorText = "숫자만 입력해주세요");
+                              weightFocus.requestFocus();
+                              return;
+                            }
+
+                            if (w >= 1000) {
+                              setState(
+                                () => errorText = "체중은 1000kg 미만이어야 합니다",
+                              );
+                              weightFocus.requestFocus();
+                              return;
+                            }
+
+                            record.weightHistory[currentId]![index] = {
+                              "date": selectedDate,
+                              "weight": w,
+                            };
+                            onUpdate();
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF44403B),
+                          ),
+                          child: const Text(
+                            "수정",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 16),
-          actions: [
-            _buildSmallButton(
-              label: "취소",
-              isPrimary: false,
-              onTap: () {
-                Navigator.pop(context);
-                showWeightDialog(
-                  context,
-                  petName,
-                  editIndex: editIndex,
-                  onUpdate: onUpdate,
-                  initialDate: currentDate,
-                  initialWeight: currentWeight,
-                );
-              },
-            ),
-            _buildSmallButton(
-              label: "확인",
-              isPrimary: true,
-              onTap: () {
-                Navigator.pop(context);
-                showWeightDialog(
-                  context,
-                  petName,
-                  editIndex: editIndex,
-                  onUpdate: onUpdate,
-                  initialDate: tempDate,
-                  initialWeight: currentWeight,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static void _saveData(
-    String petName,
-    DateTime date,
-    String weightStr,
-    int? editIndex,
-    VoidCallback onUpdate,
-    BuildContext context,
-  ) {
-    double newWeight = double.tryParse(weightStr) ?? 0.0;
-    List<Map<String, dynamic>> history = record.weightHistory[petName] ?? [];
-    bool isDuplicate = history.asMap().entries.any((entry) {
-      if (editIndex != null && entry.key == editIndex) return false;
-      return isSameDay(entry.value['date'], date);
-    });
-    if (isDuplicate) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("해당 날짜에 이미 기록이 있습니다.")));
-      return;
-    }
-    if (editIndex == null) {
-      history.add({"date": date, "weight": newWeight});
-    } else {
-      history[editIndex] = {"date": date, "weight": newWeight};
-    }
-    history.sort(
-      (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
-    );
-    record.petProfiles[petName]?['weight'] = history.last['weight'].toString();
-    onUpdate();
-    Navigator.pop(context);
-  }
-
-  static Widget _buildSmallButton({
-    required String label,
-    required VoidCallback onTap,
-    required bool isPrimary,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isPrimary ? const Color(0xFF44403B) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: isPrimary ? null : Border.all(color: const Color(0xFFE7E5E4)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isPrimary ? Colors.white : const Color(0xFF605A55),
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ⭐ 버튼 가로 길이를 더 짧게 조정
-  static Widget _buildCompactMenuButton({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 140,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static void _confirmDelete(
-    BuildContext context,
-    String petName,
-    int index,
-    VoidCallback onUpdate,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFF1F2ED),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-        title: const Text(
-          "삭제",
-          style: TextStyle(
-            color: Color(0xFF44403B),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        content: const Text(
-          "기록을 정말 삭제할까요?",
-          style: TextStyle(color: Color(0xFF605A55), fontSize: 13),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 16),
-        actions: [
-          _buildSmallButton(
-            label: "취소",
-            isPrimary: false,
-            onTap: () => Navigator.pop(context),
-          ),
-          _buildSmallButton(
-            label: "삭제",
-            isPrimary: true,
-            onTap: () {
-              record.weightHistory[petName]!.removeAt(index);
-              if (record.weightHistory[petName]!.isNotEmpty) {
-                record.petProfiles[petName]?['weight'] = record
-                    .weightHistory[petName]!
-                    .last['weight']
-                    .toString();
-              }
-              onUpdate();
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -62,6 +62,7 @@ class _HomePageState extends State<HomePage> {
           // [수정 모드]
           String currentId = record.myPetIds[_selectedPetIndex];
 
+          // 1. 프로필 정보 업데이트 (기존 코드 유지)
           record.petProfiles[currentId] = {
             "name": result.name,
             "type": result.type,
@@ -71,8 +72,32 @@ class _HomePageState extends State<HomePage> {
             "weight": result.weight,
             "gender": result.gender,
             "isNeutered": result.isNeutered,
-            "imagePath": imagePath, // [저장] 이미지 경로 저장
+            "imagePath": imagePath,
           };
+          double? newWeight = double.tryParse(result.weight);
+          if (newWeight != null) {
+            if (record.weightHistory[currentId] == null) {
+              record.weightHistory[currentId] = [];
+            }
+            List<Map<String, dynamic>> history =
+                record.weightHistory[currentId]!;
+
+            DateTime now = DateTime.now();
+
+            // 1. '오늘' 날짜로 저장된 기록이 있다면 모두 삭제 (중복 방지)
+            history.removeWhere((h) {
+              DateTime d = h['date'];
+              return d.year == now.year &&
+                  d.month == now.month &&
+                  d.day == now.day;
+            });
+
+            // 2. 새로운 체중으로 '오늘' 기록 추가
+            history.add({
+              "date": DateTime.now(), // 시간까지 포함하여 가장 뒤로 가게 함
+              "weight": newWeight,
+            });
+          }
         } else {
           // [새 등록 모드]
           String newId = DateTime.now().millisecondsSinceEpoch.toString();
