@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'nutrition_dialogs.dart';
 
 // ==========================================
-// 1. 사료 계산기 카드 (V1 디자인 + V2 데이터 파싱)
+// 1. 사료 계산기 카드
 // ==========================================
 class FoodCalculatorCard extends StatelessWidget {
   final Map<String, dynamic> profile;
@@ -23,7 +23,6 @@ class FoodCalculatorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // [V2 Logic] 안전한 데이터 파싱
     String petType = profile['type']?.toString() ?? "강아지";
     String emoji = petType == "강아지" ? "🐶" : "🐱";
     String weightStr = profile['weight']?.toString() ?? '?';
@@ -48,7 +47,6 @@ class FoodCalculatorCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // 헤더 영역
           Row(
             children: [
               Container(
@@ -75,8 +73,6 @@ class FoodCalculatorCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-
-          // 정보 표시 영역 (V1 디자인)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
@@ -92,12 +88,8 @@ class FoodCalculatorCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-
-          // 활동량 선택 (V1 디자인)
           _buildActivitySelector(),
           const SizedBox(height: 18),
-
-          // 결과 박스 (V1 디자인)
           _buildResultBox(foodAmount),
         ],
       ),
@@ -197,7 +189,7 @@ class FoodCalculatorCard extends StatelessWidget {
 }
 
 // ==========================================
-// 2. 체중 추이 그래프 카드 (V2 기능 + V1 스타일 컨테이너)
+// 2. 체중 추이 그래프 카드
 // ==========================================
 class WeightTrendCard extends StatefulWidget {
   final String petName;
@@ -230,9 +222,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
 
   @override
   Widget build(BuildContext context) {
-    // --------------------------------------------------------
-    // [V2 Logic] 데이터 준비 및 선형 회귀 분석
-    // --------------------------------------------------------
     List<_ChartData> chartDataList = _prepareChartData();
 
     double diff = 0;
@@ -255,9 +244,20 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
     List<FlSpot> trendSpots = [];
     double? predictedWeightIn30Days;
 
+    // --------------------------------------------------------
+    // [예측 로직] 데이터 10개 이하: 평균 / 10개 초과: 선형회귀
+    // --------------------------------------------------------
     if (fullHistory.isNotEmpty) {
-      if (fullHistory.length >= 2) {
-        // [케이스 A] 데이터가 2개 이상일 때 -> 선형 회귀(추세선) 계산
+      if (fullHistory.length <= 10) {
+        // [10개 이하] 단순 평균값
+        double totalWeight = 0;
+        for (var h in fullHistory) {
+          totalWeight += (h['weight'] as num).toDouble();
+        }
+        predictedWeightIn30Days = totalWeight / fullHistory.length;
+        // 추세선은 그리지 않음
+      } else {
+        // [10개 초과] 선형 회귀 (Linear Regression)
         DateTime startDate = fullHistory.first['date'];
 
         double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
@@ -294,7 +294,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
             .inDays;
         predictedWeightIn30Days = (slope * (lastDayDays + 30)) + intercept;
 
-        // 추세선(점선) 좌표 계산
+        // 추세선(점선) 계산
         DateTime today = DateTime.now();
         DateTime viewEndDate = DateTime(today.year, today.month, today.day);
         DateTime viewStartDate;
@@ -312,20 +312,12 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
 
         double startY = (slope * startX) + intercept;
         double endY = (slope * endX) + intercept;
-        if (startY.isFinite && endY.isFinite) {
-          trendSpots = [FlSpot(0, startY), FlSpot(6, endY)];
-        }
-      } else {
-        // [케이스 B] 데이터가 1개일 때 -> 현재 체중 유지로 가정
-        predictedWeightIn30Days = fullHistory.first['weight'];
+
+        trendSpots = [FlSpot(0, startY), FlSpot(6, endY)];
       }
 
-      if (predictedWeightIn30Days != null) {
-        if (!predictedWeightIn30Days!.isFinite) {
-          predictedWeightIn30Days = null;
-        } else if (predictedWeightIn30Days < 0) {
-          predictedWeightIn30Days = 0;
-        }
+      if (predictedWeightIn30Days != null && predictedWeightIn30Days < 0) {
+        predictedWeightIn30Days = 0;
       }
     }
 
@@ -412,58 +404,37 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 상단바
+          // [수정] (+) 버튼 삭제됨 (Row 내부 GestureDetector 제거)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF44403B),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.show_chart,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    "체중 추이",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF44403B),
-                    ),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: () => NutritionDialogs.showWeightDialog(
-                  context,
-                  widget.petName,
-                  onUpdate: widget.onUpdate,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF44403B),
+                  shape: BoxShape.circle,
                 ),
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF44403B),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.show_chart,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                "체중 추이",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF44403B),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          _buildPeriodTabs(),
+          Center(child: _buildPeriodTabs()),
           const SizedBox(height: 24),
 
-          // 차트 영역 (V2 fl_chart 사용)
+          // 차트 영역
           SizedBox(
             height: 200,
             width: double.infinity,
@@ -698,7 +669,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
             ],
           ),
 
-          // [V2 Logic] 미래 예측 박스
+          // 미래 예측 박스
           if (predictedWeightIn30Days != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -749,7 +720,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
     );
   }
 
-  // 데이터 처리 로직 (V2)
   List<_ChartData> _prepareChartData() {
     List<Map<String, dynamic>> rawHistory = widget.history;
     if (rawHistory.isEmpty) return [];

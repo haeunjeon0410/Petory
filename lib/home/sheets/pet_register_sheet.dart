@@ -257,7 +257,7 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
                     focusNode: _nameFocus,
                     hint: "예: 초코",
                     noSpecialChars: true,
-                    maxLength: 8,
+                    maxLength: 7,
                     errorText: _nameError,
                   ),
                   const SizedBox(height: 20),

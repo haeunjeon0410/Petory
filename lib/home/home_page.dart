@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../record/record_data.dart' as record;
 
-// V2 모델 및 위젯 import
+// 모델 및 위젯 import
 import 'models/pet_model.dart';
 import 'models/task_model.dart';
 import 'utils/time_helper.dart';
@@ -11,6 +11,7 @@ import 'sheets/pet_register_sheet.dart';
 import 'sheets/task_editor_sheet.dart';
 import 'sheets/task_detail_dialog.dart';
 import '../shared/app_dialog_style.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -26,7 +27,7 @@ class _HomePageState extends State<HomePage> {
   late final PageController _dateController;
   DateTime _selectedDate = DateTime.now();
 
-  // [V2] 펫 및 기능 관련 State
+  // [V2] 펫 관련 State
   int _selectedPetIndex = 0;
 
   @override
@@ -56,6 +57,51 @@ class _HomePageState extends State<HomePage> {
 
   bool _isSameDate(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  // ------------------------------------------------------------------------
+  // [수정] 건강검진/예방접종 D-Day 계산 로직 추가
+  // ------------------------------------------------------------------------
+  String _calculateHealthDDay(String petId) {
+    if (petId.isEmpty) return "--";
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // record_data.dart의 petSchedules는 Map<String, Map<DateTime, List<Schedule>>> 구조입니다.
+    final petDateMap = record.petSchedules[petId];
+
+    if (petDateMap == null || petDateMap.isEmpty) return "--";
+
+    List<DateTime> healthDates = [];
+
+    // 모든 날짜의 일정을 순회하며 키워드를 찾습니다.
+    for (final List<record.Schedule> schedulesList in petDateMap.values) {
+      for (final record.Schedule schedule in schedulesList) {
+        final String title = schedule.title;
+        final DateTime date = schedule.date;
+
+        if (title.contains("건강검진") || title.contains("예방접종")) {
+          final DateTime normalizedDate = DateTime(
+            date.year,
+            date.month,
+            date.day,
+          );
+          if (!normalizedDate.isBefore(today)) {
+            healthDates.add(normalizedDate);
+          }
+        }
+      }
+    }
+
+    if (healthDates.isEmpty) return "--";
+
+    healthDates.sort();
+    final DateTime targetDate = healthDates.first;
+    final int difference = targetDate.difference(today).inDays;
+
+    if (difference == 0) return "D-Day";
+    return "D-$difference";
+  }
 
   // ------------------------------------------------------------------------
   // [V2] 기능 로직 (등록, 삭제, 체크리스트 관리)
@@ -95,7 +141,7 @@ class _HomePageState extends State<HomePage> {
             "isNeutered": result.isNeutered,
             "imagePath": imagePath,
           };
-          // 체중 기록 업데이트 로직 유지 (생략 가능하나 기능 유지를 위해 포함)
+          // 체중 기록 업데이트 로직
           double? newWeight = double.tryParse(result.weight);
           if (newWeight != null) {
             if (record.weightHistory[currentId] == null) {
@@ -251,11 +297,14 @@ class _HomePageState extends State<HomePage> {
     Pet? currentPet;
     List<Task> currentTasks = [];
     int foodAmount = 0;
+    String healthDDay = "--"; // [추가] 초기값 설정
 
     if (hasPet && currentId != null) {
+      // D-Day 계산 실행
+      healthDDay = _calculateHealthDDay(currentId);
+
       var pData = record.petProfiles[currentId];
       if (pData != null) {
-        // 이미지 경로 처리
         String? imgPath = pData['imagePath'];
         File? imgFile;
         String? imgAsset;
@@ -278,8 +327,6 @@ class _HomePageState extends State<HomePage> {
           imageAsset: imgAsset,
         );
 
-        // 사료량 계산 (record_data에 함수가 있다고 가정하거나 로컬 로직 사용)
-        // 만약 record.calculateDailyFood가 없다면 0으로 처리됩니다.
         try {
           foodAmount = record.calculateDailyFood(pData, activityLevel: '보통');
         } catch (e) {
@@ -317,259 +364,353 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF92C6D1), // [V1] 하늘색 배경
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // 1. 날짜 선택기 (V1 스타일)
-            _buildDatePicker(),
-
-            const SizedBox(height: 10),
-
-            // 3. 프로필 정보 (V1 디자인: 이름 -> 아바타 -> 메트릭)
-            if (currentPet != null) ...[
-              // 이름
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    currentPet.name,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  // 삭제 버튼 (V2 기능 - 작게 추가)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.white70,
-                      size: 20,
-                    ),
-                    onPressed: () => _deletePet(currentId!, currentPet!.name),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-
-              // 아바타 (터치 시 수정 V2 기능 연결)
-              GestureDetector(
-                onTap: () => _openRegisterSheet(existingPet: currentPet),
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(child: _buildProfileImage(currentPet)),
-                ),
-              ),
-              const SizedBox(height: 40),
-
-              // 지표 섹션 (V1 디자인)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildMetricItem(
-                      "식사량",
-                      "$foodAmount g",
-                      Colors.white,
-                      const Color(0xFF92C6D1),
-                    ),
-                    _buildMetricItem(
-                      "달성도",
-                      "중간", // 추후 로직 추가 가능
-                      const Color(0xFFFFF59D),
-                      Colors.black87,
-                    ),
-                    _buildMetricItem(
-                      "건강검진",
-                      "D-10", // 추후 로직 추가 가능
-                      const Color(0xFF2D4464),
-                      Colors.white,
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              // 펫 없음 상태
-              const SizedBox(height: 60),
-              GestureDetector(
-                onTap: () => _openRegisterSheet(),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      "반려동물을 등록해주세요!",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
-            ],
-
-            const SizedBox(height: 40),
-
-            // 4. 체크리스트 섹션 (V2 기능 + 하단 배치)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF1F2ED), // V2의 베이지 배경
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Stack(
+        children: [
+          // 1. 배경 레이어: 날짜 + 프로필 정보
+          Column(
+            children: [
+              _buildDatePicker(),
+              const SizedBox(height: 45),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: Column(
                     children: [
-                      Row(
-                        children: [
-                          const Text(
-                            "오늘의 체크리스트",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF44403B),
+                      if (currentPet != null) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Text(
+                                  currentPet.name,
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.4),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: PopupMenuButton<String>(
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(
+                                        Icons.more_vert_rounded,
+                                        color: Color(0xFF44403B),
+                                        size: 24,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      onSelected: (value) {
+                                        if (value == 'edit') {
+                                          _openRegisterSheet(
+                                            existingPet: currentPet,
+                                          );
+                                        } else if (value == 'delete') {
+                                          _deletePet(
+                                            currentId!,
+                                            currentPet!.name,
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) =>
+                                          <PopupMenuEntry<String>>[
+                                            const PopupMenuItem<String>(
+                                              value: 'edit',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.edit_rounded,
+                                                    size: 18,
+                                                    color: Color(0xFF44403B),
+                                                  ),
+                                                  SizedBox(width: 10),
+                                                  Text(
+                                                    '프로필 수정',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: Color(0xFF44403B),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const PopupMenuDivider(),
+                                            const PopupMenuItem<String>(
+                                              value: 'delete',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.delete_rounded,
+                                                    size: 18,
+                                                    color: Colors.redAccent,
+                                                  ),
+                                                  SizedBox(width: 10),
+                                                  Text(
+                                                    '프로필 삭제',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: Colors.redAccent,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            "$completionRate%",
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2196F3),
-                            ),
-                          ),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          if (hasPet && currentId != null) {
-                            _openTaskSheet(currentId, dateKey);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("반려동물을 먼저 등록해주세요! 🐾"),
-                              ),
-                            );
-                          }
-                        },
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF44403B),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.add,
-                            color: Colors.white,
-                            size: 20,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 20),
+                        GestureDetector(
+                          onTap: () =>
+                              _openRegisterSheet(existingPet: currentPet),
+                          child: Container(
+                            width: 180,
+                            height: 180,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              border: Border.all(color: Colors.white, width: 4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: _buildProfileImage(currentPet),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildMetricItem(
+                                "권장 식사량",
+                                "$foodAmount g",
+                                Colors.white,
+                                const Color(0xFF92C6D1),
+                              ),
+                              _buildMetricItem(
+                                "완료율",
+                                "$completionRate %",
+                                const Color(0xFFFFF59D),
+                                Colors.black87,
+                              ),
+                              _buildMetricItem(
+                                "건강검진",
+                                healthDDay,
+                                const Color(0xFF2D4464),
+                                Colors.white,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 100),
+                      ] else ...[
+                        const SizedBox(height: 60),
+                        GestureDetector(
+                          onTap: () => _openRegisterSheet(),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  size: 40,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                "반려동물을 등록해주세요!",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 20),
+                ),
+              ),
+            ],
+          ),
 
-                  // 체크리스트 리스트뷰
-                  currentTasks.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            child: Text(
-                              "등록된 일정이 없습니다.\n(+) 버튼을 눌러 추가해주세요.",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.grey[400],
-                                fontSize: 14,
-                              ),
+          // 2. 전경 레이어: 체크리스트 (DraggableScrollableSheet)
+          DraggableScrollableSheet(
+            initialChildSize: 0.33,
+            minChildSize: 0.33,
+            maxChildSize: 0.92,
+            snap: true,
+            builder: (BuildContext context, ScrollController scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF1F2ED),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                      offset: Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                        )
-                      : ListView.separated(
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          itemCount: currentTasks.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final task = currentTasks[index];
-                            return CheckListTile(
-                              task: task,
-                              onToggle: () {
-                                setState(() {
-                                  record.petChecklists[currentId]![dateKey]![index]['isDone'] =
-                                      !task.isDone;
-                                });
-                                widget.onRefresh?.call();
-                              },
-                              onTap: () => _showDetailDialog(task),
-                              onEdit: () => _openTaskSheet(
-                                currentId!,
-                                dateKey,
-                                editIndex: index,
-                                existingTask: task,
-                              ),
-                              onDelete: () {
-                                setState(() {
-                                  record.petChecklists[currentId]![dateKey]!
-                                      .removeAt(index);
-                                });
-                                widget.onRefresh?.call();
-                              },
-                            );
-                          },
                         ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ],
-        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "오늘의 체크리스트",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF44403B),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                if (hasPet && currentId != null) {
+                                  // [수정] dateKey 인자 추가
+                                  _openTaskSheet(currentId, dateKey);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("반려동물을 먼저 등록해주세요! 🐾"),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF44403B),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        currentTasks.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 40,
+                                  ),
+                                  child: Text(
+                                    "등록된 일정이 없습니다.\n(+) 버튼을 눌러 추가해주세요.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                physics: const NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                itemCount: currentTasks.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  final task = currentTasks[index];
+                                  return CheckListTile(
+                                    task: task,
+                                    onToggle: () {
+                                      setState(() {
+                                        record.petChecklists[currentId]![dateKey]![index]['isDone'] =
+                                            !task.isDone;
+                                      });
+                                      widget.onRefresh?.call();
+                                    },
+                                    onTap: () => _showDetailDialog(task),
+                                    onEdit: () => _openTaskSheet(
+                                      currentId!,
+                                      dateKey,
+                                      editIndex: index,
+                                      existingTask: task,
+                                    ),
+                                    onDelete: () {
+                                      setState(() {
+                                        record
+                                            .petChecklists[currentId]![dateKey]!
+                                            .removeAt(index);
+                                      });
+                                      widget.onRefresh?.call();
+                                    },
+                                  );
+                                },
+                              ),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
-  // ------------------------------------------------------------------------
   // [V1] UI 위젯 빌더 (날짜, 이미지, 메트릭)
-  // ------------------------------------------------------------------------
-
   Widget _buildDatePicker() {
     final List<String> weekdays = ["", "월", "화", "수", "목", "금", "토", "일"];
     return Container(
@@ -676,18 +817,17 @@ class _HomePageState extends State<HomePage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 70,
-          height: 35,
+          constraints: const BoxConstraints(minWidth: 88),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           decoration: BoxDecoration(
             color: circleColor,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(24),
           ),
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Text(
             circleText,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),

@@ -196,7 +196,7 @@ class _MainPageState extends State<MainPage> {
                                           s.date,
                                         );
                                         final petSchedules =
-                                            record.schedules[s.petId];
+                                            record.petSchedules[s.petId];
                                         if (petSchedules != null &&
                                             petSchedules[key] != null) {
                                           final list = petSchedules[key]!;
