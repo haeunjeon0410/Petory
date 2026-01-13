@@ -286,6 +286,13 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
+    int totalCount = currentTasks.length;
+    int doneCount = currentTasks.where((t) => t.isDone).length;
+    // 할 일이 없으면 0%, 있으면 (완료/전체)*100
+    int completionRate = totalCount == 0
+        ? 0
+        : ((doneCount / totalCount) * 100).round();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
       body: SingleChildScrollView(
@@ -322,14 +329,30 @@ class _HomePageState extends State<HomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "오늘의 체크리스트",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF44403B),
-                  ),
+                // 제목과 퍼센트를 묶어서 왼쪽 정렬
+                Row(
+                  children: [
+                    const Text(
+                      "오늘의 체크리스트",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF44403B),
+                      ),
+                    ),
+                    const SizedBox(width: 8), // 제목과 퍼센트 사이 간격
+                    Text(
+                      "$completionRate%", // 계산된 완료율 표시
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2196F3), // 파란색 포인트 컬러 (원하는 색으로 변경 가능)
+                      ),
+                    ),
+                  ],
                 ),
+
+                // (+) 추가 버튼 (기존 코드 유지)
                 GestureDetector(
                   onTap: () {
                     if (hasPet && currentId != null) {
