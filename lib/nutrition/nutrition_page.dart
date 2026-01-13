@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:intl/intl.dart';
 import '../record/record_data.dart' as record;
-import '../home/sheets/pet_register_sheet.dart';
 import 'nutrition_components.dart';
 import 'nutrition_dialogs.dart'; // [필수] 다이얼로그 파일 import
-import '../home/models/pet_model.dart';
-import '../home/widgets/pet_tab_bar.dart';
 
 class NutritionPage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -79,50 +76,6 @@ class _NutritionPageState extends State<NutritionPage> {
     }
   }
 
-  void _openAddPetDialog() async {
-    final result = await showDialog(
-      context: context,
-      builder: (context) => const Dialog(
-        backgroundColor: Colors.transparent,
-        child: PetRegisterSheet(),
-      ),
-    );
-
-    if (result != null && result is Pet) {
-      String newId = DateTime.now().millisecondsSinceEpoch.toString();
-
-      setState(() {
-        record.myPetIds.add(newId);
-        record.petProfiles[newId] = {
-          "name": result.name,
-          "type": result.type,
-          "species": result.species,
-          "age": result.age,
-          "height": result.height,
-          "weight": result.weight,
-          "gender": result.gender,
-          "isNeutered": result.isNeutered,
-          "imagePath": result.imageFile?.path ?? result.imageAsset,
-        };
-
-        double initWeight = double.tryParse(result.weight) ?? 0.0;
-        record.weightHistory[newId] = [];
-        if (initWeight > 0) {
-          record.weightHistory[newId]!.add({
-            "date": DateTime.now(),
-            "weight": initWeight,
-          });
-        }
-
-        if (record.petChecklists[newId] == null) {
-          record.petChecklists[newId] = [];
-        }
-        record.selectedPetId = newId;
-      });
-      if (widget.onRefresh != null) widget.onRefresh!();
-    }
-  }
-
   // --------------------------------------------------------------------------
   // [Logic] 날짜 및 체중 기록 관련 (V1 기능)
   // --------------------------------------------------------------------------
@@ -153,6 +106,7 @@ class _NutritionPageState extends State<NutritionPage> {
     NutritionDialogs.showWeightDialog(
       context,
       record.petProfiles[petId]?['name'] ?? '',
+      initialDate: date,
       onUpdate: () {
         setState(() {
           _syncProfileWeight(petId);
@@ -442,21 +396,6 @@ class _NutritionPageState extends State<NutritionPage> {
       color: const Color(0xFFF1F2ED), // 전체 배경 (V2 스타일)
       child: Column(
         children: [
-          // 1. 펫 선택 탭바 (V2)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 15, 20, 0),
-            child: PetTabBar(
-              petIds: record.myPetIds,
-              petProfiles: record.petProfiles,
-              selectedId: currentPetId,
-              onTap: (id) {
-                setState(() => record.selectedPetId = id);
-                if (widget.onRefresh != null) widget.onRefresh!();
-              },
-              onAdd: _openAddPetDialog,
-            ),
-          ),
-
           Expanded(
             child: SingleChildScrollView(
               child: Column(

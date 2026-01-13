@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../record_data.dart';
 import 'color_picker_dialog.dart'; // 색상 선택 다이얼로그가 있는 경로에 맞춰 확인해주세요
+import '../../shared/app_dialog_style.dart';
 
 class ScheduleDetailPage extends StatefulWidget {
   final DateTime date;
@@ -58,11 +59,12 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFFF1F2ED),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: AppDialogStyle.background,
+      shape: AppDialogStyle.shape(),
+      insetPadding: AppDialogStyle.insetPadding,
       child: Container(
         height: 500, // 레이아웃에 맞춰 적절히 조정했어요
-        padding: const EdgeInsets.all(20),
+        padding: AppDialogStyle.contentPadding,
         child: Column(
           children: [
             // 상단 헤더 영역

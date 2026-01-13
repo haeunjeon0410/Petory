@@ -6,11 +6,11 @@ import '../record/record_data.dart' as record;
 import 'models/pet_model.dart';
 import 'models/task_model.dart';
 import 'utils/time_helper.dart';
-import 'widgets/pet_tab_bar.dart';
 import 'widgets/checklist_tile.dart';
 import 'sheets/pet_register_sheet.dart';
 import 'sheets/task_editor_sheet.dart';
 import 'sheets/task_detail_dialog.dart';
+import '../shared/app_dialog_style.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -66,8 +66,8 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: AppDialogStyle.insetPadding,
+        shape: AppDialogStyle.shape(),
         child: PetRegisterSheet(existingPet: existingPet),
       ),
     );
@@ -127,7 +127,7 @@ class _HomePageState extends State<HomePage> {
             "isNeutered": result.isNeutered,
             "imagePath": imagePath,
           };
-          record.petChecklists[newId] = [];
+          record.petChecklists[newId] = {};
           _selectedPetIndex = record.myPetIds.length - 1;
           record.selectedPetId = newId;
         }
@@ -140,13 +140,24 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("반려동물 삭제"),
-        content: Text("'$petName' 프로필을 삭제하시겠습니까?"),
-        backgroundColor: Colors.white,
+        backgroundColor: AppDialogStyle.background,
+        shape: AppDialogStyle.shape(),
+        insetPadding: AppDialogStyle.insetPadding,
+        title: const Text(
+          "반려동물 삭제",
+          style: TextStyle(color: AppDialogStyle.text),
+        ),
+        content: Text(
+          "'$petName' 프로필을 삭제하시겠습니까?",
+          style: const TextStyle(color: AppDialogStyle.mutedText),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("취소", style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              "취소",
+              style: TextStyle(color: AppDialogStyle.mutedText),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -173,7 +184,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openTaskSheet(
-    String petId, {
+    String petId,
+    DateTime dateKey, {
     int? editIndex,
     Task? existingTask,
   }) async {
@@ -181,8 +193,8 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: AppDialogStyle.insetPadding,
+        shape: AppDialogStyle.shape(),
         child: TaskEditorSheet(existingTask: existingTask),
       ),
     );
@@ -195,15 +207,15 @@ class _HomePageState extends State<HomePage> {
           "icon": result.icon,
           "isDone": result.isDone,
         };
-        if (record.petChecklists[petId] == null) {
-          record.petChecklists[petId] = [];
-        }
+        record.petChecklists.putIfAbsent(petId, () => {});
+        record.petChecklists[petId]!.putIfAbsent(dateKey, () => []);
         if (editIndex != null) {
-          record.petChecklists[petId]![editIndex] = taskMap;
+          record.petChecklists[petId]![dateKey]![editIndex] = taskMap;
         } else {
-          record.petChecklists[petId]!.add(taskMap);
+          record.petChecklists[petId]![dateKey]!.add(taskMap);
         }
       });
+      widget.onRefresh?.call();
     }
   }
 
@@ -232,6 +244,8 @@ class _HomePageState extends State<HomePage> {
       if (_selectedPetIndex >= record.myPetIds.length) _selectedPetIndex = 0;
       currentId = record.myPetIds[_selectedPetIndex];
     }
+
+    final DateTime dateKey = record.normalizeDate(_selectedDate);
 
     // 데이터 로드
     Pet? currentPet;
@@ -273,7 +287,8 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
-      var cList = record.petChecklists[currentId];
+      var dateMap = record.petChecklists[currentId];
+      final cList = dateMap?[dateKey];
       if (cList != null) {
         currentTasks = cList
             .map(
@@ -310,25 +325,6 @@ class _HomePageState extends State<HomePage> {
             _buildDatePicker(),
 
             const SizedBox(height: 10),
-
-            // 2. 펫 선택 탭바 (V2 기능 + 상단 배치)
-            if (hasPet)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: PetTabBar(
-                  petIds: record.myPetIds,
-                  petProfiles: record.petProfiles,
-                  selectedId: record.selectedPetId,
-                  onTap: (id) => setState(() {
-                    _selectedPetIndex = record.myPetIds.indexOf(id);
-                    record.selectedPetId = id;
-                    widget.onRefresh?.call();
-                  }),
-                  onAdd: () => _openRegisterSheet(),
-                ),
-              ),
-
-            const SizedBox(height: 20),
 
             // 3. 프로필 정보 (V1 디자인: 이름 -> 아바타 -> 메트릭)
             if (currentPet != null) ...[
@@ -484,7 +480,7 @@ class _HomePageState extends State<HomePage> {
                       GestureDetector(
                         onTap: () {
                           if (hasPet && currentId != null) {
-                            _openTaskSheet(currentId);
+                            _openTaskSheet(currentId, dateKey);
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -538,22 +534,24 @@ class _HomePageState extends State<HomePage> {
                               task: task,
                               onToggle: () {
                                 setState(() {
-                                  record.petChecklists[currentId]![index]['isDone'] =
+                                  record.petChecklists[currentId]![dateKey]![index]['isDone'] =
                                       !task.isDone;
                                 });
+                                widget.onRefresh?.call();
                               },
                               onTap: () => _showDetailDialog(task),
                               onEdit: () => _openTaskSheet(
                                 currentId!,
+                                dateKey,
                                 editIndex: index,
                                 existingTask: task,
                               ),
                               onDelete: () {
                                 setState(() {
-                                  record.petChecklists[currentId]!.removeAt(
-                                    index,
-                                  );
+                                  record.petChecklists[currentId]![dateKey]!
+                                      .removeAt(index);
                                 });
+                                widget.onRefresh?.call();
                               },
                             );
                           },

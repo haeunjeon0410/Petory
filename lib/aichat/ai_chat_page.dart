@@ -3,9 +3,6 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../record/record_data.dart' as record;
 import 'ai_chat_models.dart';
 import 'ai_chat_widgets.dart';
-import '../home/widgets/pet_tab_bar.dart';
-import '../home/sheets/pet_register_sheet.dart';
-import '../home/models/pet_model.dart';
 
 class AiChatPage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -77,22 +74,6 @@ class _AiChatPageState extends State<AiChatPage> {
       _resetChat();
       _initGemini();
     });
-  }
-
-  void _openAddPetDialog() async {
-    final result = await showDialog(
-      context: context,
-      builder: (context) => const Dialog(
-        backgroundColor: Colors.transparent,
-        child: PetRegisterSheet(),
-      ),
-    );
-
-    if (result != null && result is Pet) {
-      final newId = record.addPetProfileFromPet(result);
-      _changePetProfile(newId);
-      widget.onRefresh?.call();
-    }
   }
 
   void _initGemini() {
@@ -222,26 +203,10 @@ class _AiChatPageState extends State<AiChatPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F2ED),
+      backgroundColor: const Color(0xFFA7BD7F),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(
-              top: 15,
-              left: 20,
-              right: 20,
-              bottom: 10,
-            ),
-            child: PetTabBar(
-              petIds: record.myPetIds,
-              petProfiles: record.petProfiles,
-              selectedId: currentPetId,
-              onTap: (id) => _changePetProfile(id),
-              onAdd: _openAddPetDialog,
-            ),
-          ),
-
           Expanded(
             child: ListView.builder(
               controller: _scrollController,

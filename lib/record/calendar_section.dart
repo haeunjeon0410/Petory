@@ -3,6 +3,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'schedule/schedule_detail_page.dart'; // 경로 확인 필요
 import 'record_data.dart' as record;
+import '../shared/app_dialog_style.dart';
 
 class CalendarSection extends StatefulWidget {
   final String selectedPetName;
@@ -143,11 +144,11 @@ class _CalendarSectionState extends State<CalendarSection> {
             builder: (context, setModalState) {
               final daySchedules = _getSortedSchedules(day);
               return Dialog(
-                backgroundColor: const Color(0xFFF1F2ED),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24)),
+                backgroundColor: AppDialogStyle.background,
+                shape: AppDialogStyle.shape(),
+                insetPadding: AppDialogStyle.insetPadding,
                 child: Container(
-                  height: 500, padding: const EdgeInsets.all(20),
+                  height: 500, padding: AppDialogStyle.contentPadding,
                   child: Column(
                     children: [
                       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,

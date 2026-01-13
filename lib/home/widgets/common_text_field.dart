@@ -43,20 +43,13 @@ class CommonTextField extends StatelessWidget {
           // [수정 1] 컨테이너가 자식(TextField)의 둥근 모서리를 넘지 않도록 자름
           clipBehavior: Clip.hardEdge,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFFE7E5E4),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: TextField(
             controller: controller,
             focusNode: focusNode,
-            cursorColor: Colors.black,
+            cursorColor: const Color(0xFF44403B),
             keyboardType: isNumber
                 ? const TextInputType.numberWithOptions(decimal: true)
                 : TextInputType.text,
@@ -78,7 +71,10 @@ class CommonTextField extends StatelessWidget {
 
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+              hintStyle: const TextStyle(
+                color: Color(0xFF605A55),
+                fontSize: 14,
+              ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 16,
@@ -90,7 +86,9 @@ class CommonTextField extends StatelessWidget {
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: hasError ? Colors.red : const Color(0xFFF1F2ED),
+                  color: hasError
+                      ? Colors.red
+                      : const Color(0xFFE7E5E4),
                   // [수정 2] 에러 상태일 때 두께를 1.5로 고정 (기존 1.0 -> 1.5)
                   width: hasError ? 1.5 : 1.0,
                 ),
@@ -105,7 +103,7 @@ class CommonTextField extends StatelessWidget {
                 ),
               ),
 
-              fillColor: const Color(0xFFF1F2ED),
+              fillColor: const Color(0xFFE7E5E4),
               filled: true,
             ),
           ),

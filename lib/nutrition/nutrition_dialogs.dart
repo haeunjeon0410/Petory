@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../record/record_data.dart' as record;
 import '../home/widgets/common_text_field.dart'; // CommonTextField 위치에 맞게 경로 수정 필요
+import '../shared/app_dialog_style.dart';
 
 class NutritionDialogs {
   // [체중 등록 다이얼로그]
   static void showWeightDialog(
     BuildContext context,
     String petName, {
+    DateTime? initialDate,
     required VoidCallback onUpdate,
   }) {
-    DateTime selectedDate = DateTime.now();
+    DateTime selectedDate = initialDate ?? DateTime.now();
     TextEditingController weightController = TextEditingController();
     FocusNode weightFocus = FocusNode();
 
@@ -22,12 +24,11 @@ class NutritionDialogs {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
+              backgroundColor: AppDialogStyle.background,
+              shape: AppDialogStyle.shape(),
+              insetPadding: AppDialogStyle.insetPadding,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: AppDialogStyle.contentPadding,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,7 +38,7 @@ class NutritionDialogs {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF44403B),
+                        color: AppDialogStyle.text,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -82,12 +83,14 @@ class NutritionDialogs {
                           children: [
                             Text(
                               DateFormat('yyyy. MM. dd').format(selectedDate),
-                              style: const TextStyle(color: Color(0xFF44403B)),
+                              style: const TextStyle(
+                                color: AppDialogStyle.text,
+                              ),
                             ),
                             const Icon(
                               Icons.calendar_today,
                               size: 16,
-                              color: Color(0xFF605A55),
+                              color: AppDialogStyle.mutedText,
                             ),
                           ],
                         ),
@@ -115,7 +118,7 @@ class NutritionDialogs {
                           onPressed: () => Navigator.pop(context),
                           child: const Text(
                             "취소",
-                            style: TextStyle(color: Color(0xFF605A55)),
+                            style: TextStyle(color: AppDialogStyle.mutedText),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -168,7 +171,7 @@ class NutritionDialogs {
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF44403B),
+                            backgroundColor: AppDialogStyle.text,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -223,12 +226,11 @@ class NutritionDialogs {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
+              backgroundColor: AppDialogStyle.background,
+              shape: AppDialogStyle.shape(),
+              insetPadding: AppDialogStyle.insetPadding,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: AppDialogStyle.contentPadding,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -237,6 +239,7 @@ class NutritionDialogs {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: AppDialogStyle.text,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -299,7 +302,7 @@ class NutritionDialogs {
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF44403B),
+                            backgroundColor: AppDialogStyle.text,
                           ),
                           child: const Text(
                             "수정",

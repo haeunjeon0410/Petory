@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/task_model.dart';
+import '../../shared/app_dialog_style.dart';
 
 class TaskDetailDialog extends StatelessWidget {
   final Task task;
@@ -10,11 +11,11 @@ class TaskDetailDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+      insetPadding: AppDialogStyle.insetPadding,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          color: AppDialogStyle.background,
+          borderRadius: BorderRadius.circular(AppDialogStyle.radius),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -22,11 +23,11 @@ class TaskDetailDialog extends StatelessWidget {
             // 1. 헤더
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              decoration: const BoxDecoration(
-                color: Color(0xFF44403B),
+              decoration: BoxDecoration(
+                color: AppDialogStyle.text,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+                  topLeft: Radius.circular(AppDialogStyle.radius),
+                  topRight: Radius.circular(AppDialogStyle.radius),
                 ),
               ),
               child: Row(

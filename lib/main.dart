@@ -18,8 +18,11 @@ import 'nutrition/nutrition_page.dart';
 import 'aichat/ai_chat_page.dart';
 import 'home/sheets/pet_register_sheet.dart';
 import 'home/models/pet_model.dart';
+import 'shared/app_dialog_style.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await record.loadFromStorage();
   runApp(const PetoryApp());
 }
 
@@ -92,6 +95,19 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   bool _isBadgeRead = false;
   int _lastNotificationCount = 0;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   // [V2] 비상 연락망 다이얼로그 호출
   void _showEmergencyDialog(BuildContext context) {
@@ -114,15 +130,13 @@ class _MainPageState extends State<MainPage> {
             final activeAlarms = record.getActiveAlarmsForNext24Hours();
 
             return Dialog(
-              backgroundColor: const Color(0xFFF1F2ED),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              insetPadding: const EdgeInsets.all(20),
+              backgroundColor: AppDialogStyle.background,
+              shape: AppDialogStyle.shape(),
+              insetPadding: AppDialogStyle.insetPadding,
               child: Container(
                 width: double.infinity,
                 height: 420,
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                padding: AppDialogStyle.contentPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -210,6 +224,7 @@ class _MainPageState extends State<MainPage> {
                                         }
                                       });
                                       setState(() {});
+                                      record.saveToStorage();
                                     },
                                     background: Container(
                                       decoration: BoxDecoration(
@@ -329,16 +344,26 @@ class _MainPageState extends State<MainPage> {
       context: context,
       builder: (context) {
         final ids = record.myPetIds;
+        final int selectedIndex = ids.indexOf(record.selectedPetId);
+        const double itemExtent = 84;
+        final ScrollController scrollController = ScrollController();
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!scrollController.hasClients || selectedIndex < 0) return;
+          final double viewport = scrollController.position.viewportDimension;
+          final double targetOffset =
+              selectedIndex * itemExtent - (viewport - itemExtent) / 2;
+          final double clamped = targetOffset.clamp(
+            0.0,
+            scrollController.position.maxScrollExtent,
+          );
+          scrollController.jumpTo(clamped);
+        });
 
         return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 33,
-            vertical: 34,
-          ),
+          backgroundColor: AppDialogStyle.background,
+          shape: AppDialogStyle.shape(),
+          insetPadding: AppDialogStyle.insetPadding,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Column(
@@ -376,6 +401,7 @@ class _MainPageState extends State<MainPage> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     physics: const BouncingScrollPhysics(),
+                    controller: scrollController,
                     child: Row(
                       children: [
                         for (final id in ids)
@@ -418,6 +444,7 @@ class _MainPageState extends State<MainPage> {
       onTap: () {
         record.selectedPetId = id;
         setState(() {});
+        record.saveToStorage();
         Navigator.pop(context);
       },
       child: Column(
@@ -450,10 +477,8 @@ class _MainPageState extends State<MainPage> {
           context: context,
           builder: (ctx) => Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
+            insetPadding: AppDialogStyle.insetPadding,
+            shape: AppDialogStyle.shape(),
             child: PetRegisterSheet(),
           ),
         );
@@ -461,6 +486,7 @@ class _MainPageState extends State<MainPage> {
         if (result != null && result is Pet) {
           record.addPetProfileFromPet(result);
           setState(() {});
+          record.saveToStorage();
           Navigator.pop(context);
         }
       },
@@ -504,10 +530,30 @@ class _MainPageState extends State<MainPage> {
 
     // [중요] onRefresh를 전달하여 하위 페이지에서 변경 사항이 생기면 메인도 갱신
     final List<Widget> screens = [
-      HomePage(onRefresh: () => setState(() {})),
-      RecordPage(onRefresh: () => setState(() {})),
-      NutritionPage(onRefresh: () => setState(() {})),
-      AiChatPage(onRefresh: () => setState(() {})),
+      HomePage(
+        onRefresh: () {
+          record.saveToStorage();
+          setState(() {});
+        },
+      ),
+      RecordPage(
+        onRefresh: () {
+          record.saveToStorage();
+          setState(() {});
+        },
+      ),
+      NutritionPage(
+        onRefresh: () {
+          record.saveToStorage();
+          setState(() {});
+        },
+      ),
+      AiChatPage(
+        onRefresh: () {
+          record.saveToStorage();
+          setState(() {});
+        },
+      ),
     ];
 
     // [V1 Logic] 현재 선택된 펫의 이미지 가져오기 (AppBar용)
@@ -529,52 +575,55 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
 
-      // [V1 Design] AppBar - 프로필 사진 및 디자인 적용
+      // ... 생략 (기존 import 및 다른 코드들)
+
+      // [V1 Design] AppBar - 프로필 위치 및 높이 최적화
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        toolbarHeight: 56, // 타이트한 높이 설정
+        toolbarHeight: 56,
 
         leadingWidth: 100,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 26, top: 10),
+          padding: const EdgeInsets.only(left: 26),
           child: Align(
             alignment: Alignment.centerLeft,
             child: GestureDetector(
               onTap: () => _showPetProfileDialog(context),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey.shade300, width: 1.2),
-                ),
-                child: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  backgroundImage: avatarImage,
+              child: Transform.translate(
+                offset: const Offset(0, -2),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                  ),
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    backgroundImage: avatarImage,
+                  ),
                 ),
               ),
             ),
           ),
         ),
 
-        // title 제거 또는 중앙 로고 배치 가능 (V1 디자인 따름)
         actions: [
           Padding(
+            // 아이콘들이 앱바 중앙에 오도록 맞춤
             padding: const EdgeInsets.only(right: 12),
             child: Row(
               children: [
-                // 1. 비상 연락망 버튼
                 IconButton(
                   icon: const Icon(
-                    Icons.local_hospital_rounded,
+                    CupertinoIcons.plus_square,
                     color: Colors.redAccent,
                   ),
                   onPressed: () => _showEmergencyDialog(context),
                 ),
-                // 2. 알림 버튼
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -606,7 +655,12 @@ class _MainPageState extends State<MainPage> {
         ],
       ),
 
-      body: IndexedStack(index: _currentIndex, children: screens),
+      // ... 생략
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) => setState(() => _currentIndex = index),
+        children: screens,
+      ),
 
       // [V1 Design] BottomNavigationBar
       bottomNavigationBar: Container(
@@ -619,15 +673,22 @@ class _MainPageState extends State<MainPage> {
                 final isSelected = _currentIndex == index;
                 final List<IconData> icons = [
                   CupertinoIcons.house_fill,
-                  CupertinoIcons.photo_on_rectangle,
-                  CupertinoIcons.heart,
-                  CupertinoIcons.chat_bubble_text,
+                  CupertinoIcons.calendar,
+                  CupertinoIcons.chart_bar_fill,
+                  CupertinoIcons.bubble_left_bubble_right,
                 ];
-                final List<String> labels = ['홈', '기록', '영양관리', 'AI 채팅'];
+                final List<String> labels = ['홈', '기록', '변화', 'AI닥터'];
 
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _currentIndex = index),
+                    onTap: () => setState(() {
+                      _currentIndex = index;
+                      _pageController.animateToPage(
+                        index,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                      );
+                    }),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
@@ -815,13 +876,13 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFFF1F2ED),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      insetPadding: const EdgeInsets.all(20),
+      backgroundColor: AppDialogStyle.background,
+      shape: AppDialogStyle.shape(),
+      insetPadding: AppDialogStyle.insetPadding,
       child: Container(
         width: double.infinity,
         height: 450,
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        padding: AppDialogStyle.contentPadding,
         child: Column(
           children: [
             // 헤더
@@ -831,7 +892,7 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                 const Row(
                   children: [
                     Icon(
-                      Icons.local_hospital_rounded,
+                      CupertinoIcons.phone_circle_fill,
                       color: Colors.redAccent,
                       size: 24,
                     ),
