@@ -226,88 +226,145 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. 차트 데이터 준비
+    // 1. 데이터 준비
     List<_ChartData> chartDataList = _prepareChartData();
 
-    // 2. 변화량 계산
+    // 2. 변화량 계산 (최근 - 직전)
     double diff = 0;
-    if (chartDataList.isNotEmpty) {
-      double current = chartDataList.last.weight;
-      if (chartDataList.length >= 2) {
-        double prev = chartDataList[chartDataList.length - 2].weight;
-        diff = current - prev;
+    List<Map<String, dynamic>> sortedHistory = List.from(widget.history);
+    sortedHistory.sort((a, b) => (a['date'] as DateTime).compareTo(b['date']));
+
+    // 중복 제거된 전체 히스토리 (하루 1개)
+    Map<String, Map<String, dynamic>> distinctMap = {};
+    for (var h in sortedHistory) {
+      DateTime d = h['date'];
+      distinctMap["${d.year}-${d.month}-${d.day}"] = h;
+    }
+    List<Map<String, dynamic>> fullHistory = distinctMap.values.toList();
+
+    if (fullHistory.length >= 2) {
+      diff =
+          fullHistory.last['weight'] -
+          fullHistory[fullHistory.length - 2]['weight'];
+    }
+
+    // --------------------------------------------------------
+    // [추가] 3. 선형 회귀 분석 (Linear Regression) 및 예측
+    // --------------------------------------------------------
+    List<FlSpot> trendSpots = [];
+    double? predictedWeightIn30Days;
+
+    // 데이터가 1개라도 있으면 예측 값 생성
+    if (fullHistory.isNotEmpty) {
+      if (fullHistory.length >= 2) {
+        // [케이스 A] 데이터가 2개 이상일 때 -> 선형 회귀(추세선) 계산
+        DateTime startDate = fullHistory.first['date'];
+
+        double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+        int n = fullHistory.length;
+
+        for (var h in fullHistory) {
+          double x = (h['date'] as DateTime)
+              .difference(startDate)
+              .inDays
+              .toDouble();
+          double y = h['weight'];
+
+          sumX += x;
+          sumY += y;
+          sumXY += (x * y);
+          sumXX += (x * x);
+        }
+
+        double slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+        double intercept = (sumY - slope * sumX) / n;
+
+        // 30일 후 예측
+        int lastDayDays = (fullHistory.last['date'] as DateTime)
+            .difference(startDate)
+            .inDays;
+        predictedWeightIn30Days = (slope * (lastDayDays + 30)) + intercept;
+
+        // 추세선(점선) 좌표 계산
+        DateTime today = DateTime.now();
+        DateTime viewEndDate = DateTime(today.year, today.month, today.day);
+        DateTime viewStartDate;
+
+        if (_selectedPeriod == "일간") {
+          viewStartDate = viewEndDate.subtract(const Duration(days: 6));
+        } else if (_selectedPeriod == "주간") {
+          viewStartDate = viewEndDate.subtract(const Duration(days: 6 * 7));
+        } else {
+          viewStartDate = DateTime(viewEndDate.year, viewEndDate.month - 6, 1);
+        }
+
+        double startX = viewStartDate.difference(startDate).inDays.toDouble();
+        double endX = viewEndDate.difference(startDate).inDays.toDouble();
+
+        double startY = (slope * startX) + intercept;
+        double endY = (slope * endX) + intercept;
+
+        trendSpots = [FlSpot(0, startY), FlSpot(6, endY)];
+      } else {
+        // [케이스 B] 데이터가 1개일 때 -> 현재 체중 유지로 가정
+        predictedWeightIn30Days = fullHistory.first['weight'];
+        // 추세선(trendSpots)은 점 2개가 필요하므로 그리지 않음 (빈 리스트 유지)
+      }
+
+      // 음수 방지 (공통)
+      if (predictedWeightIn30Days != null && predictedWeightIn30Days < 0) {
+        predictedWeightIn30Days = 0;
       }
     }
 
-    // 3. FlSpot 변환
-    List<FlSpot> spots = chartDataList
+    // --------------------------------------------------------
+    // 4. 메인 그래프 데이터 (Spots)
+    List<FlSpot> mainSpots = chartDataList
         .map((e) => FlSpot(e.xIndex.toDouble(), e.weight))
         .toList();
 
-    // 4. [핵심] Y축 범위 및 간격 계산 (Nice Numbers 적용)
+    // 5. Y축 범위 계산 (메인 데이터 + 추세선 모두 포함하도록)
+    List<double> allYValues = [
+      ...mainSpots.map((e) => e.y),
+      ...trendSpots.map((e) => e.y), // 추세선 값도 범위 계산에 포함
+    ];
+
     double minW, maxW, yInterval;
 
-    if (spots.isEmpty) {
+    if (allYValues.isEmpty) {
       minW = 0;
       maxW = 10;
       yInterval = 2.5;
     } else {
-      // 데이터의 실제 최소/최대값 조회
-      double dataMin = spots.map((e) => e.y).reduce(min);
-      double dataMax = spots.map((e) => e.y).reduce(max);
+      double dataMin = allYValues.reduce(min);
+      double dataMax = allYValues.reduce(max);
 
-      // 값이 하나거나 모두 같을 경우 처리
       if (dataMax == dataMin) {
         dataMin -= 1;
         dataMax += 1;
       }
 
-      // 목표 간격 계산 (전체 범위를 4등분)
       double rawRange = dataMax - dataMin;
       double targetInterval = rawRange / 4.0;
-
-      // 간격의 자릿수(Magnitude) 계산 (예: 35 -> 10, 0.35 -> 0.1)
       double magnitude = pow(
         10,
         (log(targetInterval) / ln10).floor(),
       ).toDouble();
-      double normalizedStep = targetInterval / magnitude;
+      double niceStep = targetInterval / magnitude;
 
-      // 보기 좋은 간격(Nice Step) 선정 (1, 2, 2.5, 5 단위)
-      double niceStep;
-      if (normalizedStep <= 1.0) {
+      if (niceStep <= 1.0)
         niceStep = 1.0;
-      } else if (normalizedStep <= 2.0) {
+      else if (niceStep <= 2.0)
         niceStep = 2.0;
-      } else if (normalizedStep <= 2.5) {
+      else if (niceStep <= 2.5)
         niceStep = 2.5;
-      } else {
+      else
         niceStep = 5.0;
-      }
 
       yInterval = niceStep * magnitude;
-
-      // 그래프의 최소값(minW)을 간격에 맞춰 내림 (Grid 정렬)
       minW = (dataMin / yInterval).floorToDouble() * yInterval;
       maxW = minW + (yInterval * 4);
 
-      // 만약 계산된 범위가 실제 최대 데이터를 포함하지 못하면 간격을 한 단계 키움
-      if (maxW < dataMax) {
-        if (niceStep == 1.0)
-          niceStep = 2.0;
-        else if (niceStep == 2.0)
-          niceStep = 2.5;
-        else if (niceStep == 2.5)
-          niceStep = 5.0;
-        else
-          niceStep = 10.0; // 다음 자릿수로 넘어감
-
-        yInterval = niceStep * magnitude;
-        minW = (dataMin / yInterval).floorToDouble() * yInterval;
-        maxW = minW + (yInterval * 4);
-      }
-
-      // 그래도 부족하면 한 번 더 보정 (안전장치)
       if (maxW < dataMax) {
         yInterval *= 2;
         minW = (dataMin / yInterval).floorToDouble() * yInterval;
@@ -387,10 +444,10 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           SizedBox(
             height: 200,
             width: double.infinity,
-            child: spots.isEmpty && widget.history.isEmpty
+            child: mainSpots.isEmpty && widget.history.isEmpty
                 ? const Center(
                     child: Text(
-                      "데이터가 없습니다.",
+                      "데이터가 부족합니다.",
                       style: TextStyle(color: Colors.grey),
                     ),
                   )
@@ -398,10 +455,12 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                     LineChartData(
                       lineTouchData: LineTouchData(
                         touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (touchedSpot) =>
-                              const Color(0xFF44403B),
+                          getTooltipColor: (spot) => const Color(0xFF44403B),
                           getTooltipItems: (touchedSpots) {
                             return touchedSpots.map((spot) {
+                              // 추세선(barIndex 1)은 툴팁 제외
+                              if (spot.barIndex == 1) return null;
+
                               var data = chartDataList.firstWhere(
                                 (e) => e.xIndex == spot.x.toInt(),
                                 orElse: () => _ChartData(0, 0, ''),
@@ -418,13 +477,11 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                             }).toList();
                           },
                         ),
-                        touchCallback:
-                            (FlTouchEvent event, lineTouchResponse) {},
                       ),
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
-                        horizontalInterval: yInterval, // [적용] Nice Interval
+                        horizontalInterval: yInterval,
                         getDrawingHorizontalLine: (value) => FlLine(
                           color: Colors.grey.withOpacity(0.05),
                           strokeWidth: 1,
@@ -443,24 +500,18 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                             reservedSize: 45,
                             interval: yInterval,
                             getTitlesWidget: (value, meta) {
-                              // [중요] 계산된 5개 지점(minW, minW+I, ...) 외의 자동 생성 라벨 숨김
-                              // 부동소수점 오차 고려하여 비교
                               double step = (value - minW) / yInterval;
-                              if ((step - step.round()).abs() > 0.01) {
+                              if ((step - step.round()).abs() > 0.01)
                                 return const SizedBox();
-                              }
 
-                              // [포맷팅] 정수면 소수점 제거, 아니면 소수점 1자리
                               String text = (value % 1 == 0)
                                   ? value.toInt().toString()
                                   : value.toStringAsFixed(1);
-
-                              // 맨 위/아래 라벨 정렬 보정
                               bool isMin = (value - minW).abs() < 0.01;
                               bool isMax = (value - maxW).abs() < 0.01;
 
                               return Container(
-                                color: Colors.white, // 배경색으로 그리드 가림
+                                color: Colors.white,
                                 margin: const EdgeInsets.only(right: 5),
                                 height: 20,
                                 alignment: isMin
@@ -523,7 +574,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                                     ? "이번 달"
                                     : DateFormat('yy.MM').format(target);
                               }
-
                               return Padding(
                                 padding: const EdgeInsets.only(top: 10),
                                 child: Text(
@@ -547,11 +597,12 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                       borderData: FlBorderData(show: false),
                       minX: 0,
                       maxX: 6,
-                      minY: minW, // [적용]
-                      maxY: maxW, // [적용]
+                      minY: minW,
+                      maxY: maxW,
                       lineBarsData: [
+                        // 1. 메인 데이터 선 (실선)
                         LineChartBarData(
-                          spots: spots,
+                          spots: mainSpots,
                           isCurved: true,
                           color: const Color(0xFF44403B),
                           barWidth: 3.5,
@@ -582,11 +633,23 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                             ),
                           ),
                         ),
+                        // 2. [추가] 추세선 (점선)
+                        if (trendSpots.isNotEmpty)
+                          LineChartBarData(
+                            spots: trendSpots,
+                            isCurved: false,
+                            color: Colors.grey.withOpacity(0.5), // 연한 회색
+                            barWidth: 2,
+                            dashArray: [5, 5], // [5px 선, 5px 공백] -> 점선 효과
+                            dotData: const FlDotData(show: false), // 점 숨김
+                          ),
                       ],
                     ),
                   ),
           ),
           const SizedBox(height: 28),
+
+          // 하단 정보 (현재 체중 & 변화량)
           Row(
             children: [
               Expanded(
@@ -607,11 +670,59 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
               ),
             ],
           ),
+
+          // [추가] 미래 예측 정보 표시
+          if (predictedWeightIn30Days != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1), // 연한 노란색 배경 (강조)
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFFECB3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome,
+                    size: 20,
+                    color: Color(0xFFFF8F00),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "AI 예측 (30일 후)",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF8D6E63),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "약 ${predictedWeightIn30Days.toStringAsFixed(2)} kg 예상",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF5D4037),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
+  // (기존 데이터 처리 함수들 유지)
   List<_ChartData> _prepareChartData() {
     List<Map<String, dynamic>> rawHistory = widget.history;
     if (rawHistory.isEmpty) return [];
@@ -633,7 +744,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
 
     for (int i = 0; i < 7; i++) {
       int offset = 6 - i;
-
       if (_selectedPeriod == "일간") {
         DateTime targetDate = today.subtract(Duration(days: offset));
         var matches = cleanHistory.where((h) {
@@ -642,11 +752,13 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
               d.month == targetDate.month &&
               d.day == targetDate.day;
         }).toList();
-
         if (matches.isNotEmpty) {
-          double weight = matches.first['weight'];
           result.add(
-            _ChartData(i, weight, DateFormat('yyyy.MM.dd').format(targetDate)),
+            _ChartData(
+              i,
+              matches.first['weight'],
+              DateFormat('yyyy.MM.dd').format(targetDate),
+            ),
           );
         }
       } else if (_selectedPeriod == "주간") {
@@ -657,7 +769,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           DateTime dDate = DateTime(d.year, d.month, d.day);
           return !dDate.isBefore(weekStart) && !dDate.isAfter(weekEnd);
         }).toList();
-
         if (matches.isNotEmpty) {
           double avg =
               matches
@@ -679,7 +790,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           return d.year == targetMonthDate.year &&
               d.month == targetMonthDate.month;
         }).toList();
-
         if (matches.isNotEmpty) {
           double avg =
               matches
