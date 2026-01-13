@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/pet_model.dart';
 import '../widgets/common_text_field.dart';
@@ -57,6 +58,7 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
   File? _selectedImage;
   String? _savedImageAsset;
   final ImagePicker _picker = ImagePicker();
+  bool _isPickingImage = false;
 
   @override
   void initState() {
@@ -93,14 +95,24 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-        _imageHasError = false; // 에러 해제
-      });
+    if (_isPickingImage) {
+      return;
+    }
+    _isPickingImage = true;
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+      );
+      if (pickedFile != null && mounted) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _imageHasError = false;
+        });
+      }
+    } on PlatformException {
+      // Ignore "already_active" race; user can tap again after picker closes.
+    } finally {
+      _isPickingImage = false;
     }
   }
 
@@ -126,30 +138,33 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFF1F2ED),
+        borderRadius: BorderRadius.circular(24),
       ),
       clipBehavior: Clip.hardEdge,
       child: Column(
         children: [
           // 헤더
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            color: const Color(0xFF44403B),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   isEditing ? "반려동물 정보 수정" : "새 반려동물 등록",
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF44403B),
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: Colors.white, size: 24),
+                  child: const Icon(
+                    Icons.close,
+                    color: Color(0xFF605A55),
+                    size: 22,
+                  ),
                 ),
               ],
             ),
@@ -173,13 +188,13 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
                             width: 100,
                             height: 100,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF1F2ED),
+                              color: const Color(0xFFE7E5E4),
                               shape: BoxShape.circle,
                               image: _getDecorationImage(),
                               border: Border.all(
                                 color: _imageHasError
                                     ? Colors.red
-                                    : const Color(0xFFF1F2ED),
+                                    : const Color(0xFFE7E5E4),
                                 width: 2,
                               ),
                             ),
@@ -213,7 +228,7 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F2ED),
+                      color: const Color(0xFFE7E5E4),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -408,7 +423,7 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF44403B),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
                       child: Text(
@@ -602,15 +617,15 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
     // 에러일 때 빨간 테두리
     Color borderColor = hasError
         ? Colors.red
-        : (isSelected ? Colors.transparent : const Color(0xFFF1F2ED));
+        : (isSelected ? Colors.transparent : const Color(0xFFE7E5E4));
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 52,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF44403B) : const Color(0xFFF1F2ED),
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? const Color(0xFF44403B) : const Color(0xFFE7E5E4),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: borderColor,
             width: hasError ? 1.0 : (isSelected ? 0 : 1),
@@ -620,7 +635,7 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
         child: Text(
           text,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black54,
+            color: isSelected ? Colors.white : const Color(0xFF605A55),
             fontSize: 16,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),

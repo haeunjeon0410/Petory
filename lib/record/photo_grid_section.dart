@@ -3,23 +3,26 @@ import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'record_data.dart' as record;
+import '../shared/app_dialog_style.dart';
 
 class PhotoGridSection extends StatelessWidget {
   final String selectedPetName;
   final DateTime focusedDay;
+  final DateTime selectedDay;
   final VoidCallback onRefresh;
 
   const PhotoGridSection({
     super.key,
     required this.selectedPetName,
     required this.focusedDay,
+    required this.selectedDay,
     required this.onRefresh,
   });
 
   void _showDatePicker(BuildContext context, DateTime oldDate, String path) {
     DateTime tempPickedDate = oldDate;
-    final pointColor = const Color(0xFF44403B);
-    final backgroundColor = const Color(0xFFF1F2ED);
+    final pointColor = AppDialogStyle.text;
+    final backgroundColor = AppDialogStyle.background;
 
     showDialog(
       context: context,
@@ -27,8 +30,9 @@ class PhotoGridSection extends StatelessWidget {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          shape: AppDialogStyle.shape(),
+          insetPadding: AppDialogStyle.insetPadding,
+          titlePadding: AppDialogStyle.titlePadding,
           title: Text('날짜 수정',
               style: TextStyle(color: pointColor, fontSize: 16, fontWeight: FontWeight.bold)),
           content: SizedBox(
@@ -86,7 +90,7 @@ class PhotoGridSection extends StatelessWidget {
               ],
             ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 16),
+          actionsPadding: AppDialogStyle.actionsPadding,
           actions: [
             _buildSmallButton(label: "취소", isPrimary: false, onTap: () => Navigator.pop(context)),
             _buildSmallButton(label: "변경", isPrimary: true, onTap: () {
@@ -105,18 +109,19 @@ class PhotoGridSection extends StatelessWidget {
   }
 
   void _showDeleteDialog(BuildContext context, DateTime date, String path) {
-    final pointColor = const Color(0xFF44403B);
-    final backgroundColor = const Color(0xFFF1F2ED);
+    final pointColor = AppDialogStyle.text;
+    final backgroundColor = AppDialogStyle.background;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: backgroundColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        shape: AppDialogStyle.shape(),
+        insetPadding: AppDialogStyle.insetPadding,
+        titlePadding: AppDialogStyle.titlePadding,
         title: Text('사진 삭제', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: pointColor)),
-        content: const Text('정말 이 사진을 삭제할까요?', style: TextStyle(fontSize: 13, color: Color(0xFF605A55))),
-        actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 16),
+        content: const Text('정말 이 사진을 삭제할까요?', style: TextStyle(fontSize: 13, color: AppDialogStyle.mutedText)),
+        actionsPadding: AppDialogStyle.actionsPadding,
         actions: [
           _buildSmallButton(label: "취소", isPrimary: false, onTap: () => Navigator.pop(context)),
           _buildSmallButton(label: "삭제", isPrimary: true, onTap: () {
@@ -125,6 +130,55 @@ class PhotoGridSection extends StatelessWidget {
             Navigator.pop(context);
           }),
         ],
+      ),
+    );
+  }
+
+  void _showPhotoPreview(BuildContext context, String path) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.85),
+      builder: (context) => GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(12),
+          child: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  child: Image.file(
+                    File(path),
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.error_outline, color: Colors.white),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -162,7 +216,8 @@ class PhotoGridSection extends StatelessWidget {
     if (petPhotos != null) {
       petPhotos.forEach((date, paths) {
         final localDate = date.toLocal();
-        if (localDate.year == localFocusedDay.year && localDate.month == localFocusedDay.month) {
+        if (localDate.year == localFocusedDay.year &&
+            localDate.month == localFocusedDay.month) {
           for (var path in paths) {
             monthPhotos.add(MapEntry(date, path));
           }
@@ -176,7 +231,7 @@ class PhotoGridSection extends StatelessWidget {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 40),
-          child: Text('이번 달에 등록된 사진이 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 14)),
+          child: Text('이번 달에 등록된 사진이 없습니다.', style: TextStyle(color: Colors.black, fontSize: 14)),
         ),
       );
     }
@@ -187,58 +242,84 @@ class PhotoGridSection extends StatelessWidget {
       itemCount: monthPhotos.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 20,
-        crossAxisSpacing: 20,
-        childAspectRatio: 0.82,
+        mainAxisSpacing: 18,
+        crossAxisSpacing: 18,
+        childAspectRatio: 1.0,
       ),
       itemBuilder: (context, index) {
         final entry = monthPhotos[index];
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 6))],
-          ),
-          child: Column(
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: Stack(
             children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-                      child: Image.file(
-                        File(entry.value), fit: BoxFit.cover, width: double.infinity, height: double.infinity,
-                        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.error_outline, color: Colors.red)),
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => _showPhotoPreview(context, entry.value),
+                  child: Image.file(
+                    File(entry.value),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFFE7E5E4),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.error_outline,
+                        color: Colors.redAccent,
                       ),
                     ),
-                    Positioned(
-                      top: 8, right: 8,
-                      child: GestureDetector(
-                        onTap: () => _showDeleteDialog(context, entry.key, entry.value),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-                          child: const Icon(Icons.close, color: Colors.white, size: 16),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 72,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withOpacity(0.45),
+                        Colors.black.withOpacity(0.0),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 10,
+                left: 12,
                 child: GestureDetector(
                   onTap: () => _showDatePicker(context, entry.key, entry.value),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.calendar_today, size: 14, color: Color(0xFF44403B)),
-                      const SizedBox(width: 6),
-                      Text(
-                        DateFormat('yyyy년 M월 d일').format(entry.key),
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF44403B), fontWeight: FontWeight.w600),
-                      ),
-                    ],
+                  child: Text(
+                    DateFormat('yyyy.MM.dd').format(entry.key),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () => _showDeleteDialog(context, entry.key, entry.value),
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
                 ),
               ),
