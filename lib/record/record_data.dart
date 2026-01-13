@@ -1,4 +1,6 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import '../home/models/pet_model.dart';
 
 // 1. 일정 데이터 클래스
 class Schedule {
@@ -43,7 +45,7 @@ Map<String, Map<String, dynamic>> petProfiles = {
     "weight": "32",
     "gender": "male",
     "isNeutered": true,
-    // "imagePath": ... (이미지 경로 필요 시 추가)
+    "imagePath": "assets/images/golden.jpg",
   },
 };
 
@@ -62,6 +64,50 @@ Map<String, List<Map<String, dynamic>>> petChecklists = {
 final Map<String, Map<DateTime, List<Schedule>>> schedules = {};
 final Map<String, Map<DateTime, List<String>>> photos = {};
 Map<String, List<Map<String, dynamic>>> weightHistory = {};
+
+String addPetProfileFromPet(Pet pet) {
+  final String newId = DateTime.now().millisecondsSinceEpoch.toString();
+  final String? imagePath = pet.imageFile?.path ?? pet.imageAsset;
+
+  myPetIds.add(newId);
+  petProfiles[newId] = {
+    'name': pet.name,
+    'type': pet.type,
+    'species': pet.species,
+    'age': pet.age,
+    'height': pet.height,
+    'weight': pet.weight,
+    'gender': pet.gender,
+    'isNeutered': pet.isNeutered,
+    'imagePath': imagePath,
+  };
+  petChecklists.putIfAbsent(newId, () => []);
+  weightHistory.putIfAbsent(newId, () => []);
+  selectedPetId = newId;
+  return newId;
+}
+
+int calculateDailyFood(
+  Map<String, dynamic> profile, {
+  String activityLevel = '\ubcf4\ud1b5',
+}) {
+  final double weight =
+      double.tryParse(profile['weight']?.toString() ?? '0') ?? 0;
+  if (weight <= 0) return 0;
+
+  final bool isNeutered =
+      profile['isNeutered'] == true ||
+      profile['isNeutered'].toString() == 'true';
+  final String type = profile['type']?.toString() ?? '\uac15\uc544\uc9c0';
+
+  final double rer = 70 * pow(weight, 0.75).toDouble();
+  double k = (type == '\uac15\uc544\uc9c0')
+      ? (isNeutered ? 1.6 : 1.8)
+      : (isNeutered ? 1.2 : 1.4);
+  if (activityLevel == '\uc800\ud65c\ub3d9') k -= 0.2;
+  if (activityLevel == '\ud65c\ubc1c') k += 0.4;
+  return (rer * k / 3.5).round();
+}
 
 // 알림 로직 (ID 기반으로 수정)
 List<Schedule> getActiveAlarmsForNext24Hours() {

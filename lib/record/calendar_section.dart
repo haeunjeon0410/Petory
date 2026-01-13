@@ -316,6 +316,7 @@ class _CalendarSectionState extends State<CalendarSection> {
             headerVisible: false,
             rowHeight: 72,
             daysOfWeekHeight: 40,
+            sixWeekMonthsEnforced: true,
             availableGestures: AvailableGestures.horizontalSwipe,
             onPageChanged: (focusedDay) {
               setState(() => _focusedDay = focusedDay);

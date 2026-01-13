@@ -227,47 +227,26 @@ class WeightTrendCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF44403B),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.show_chart,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    "체중 추이",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF44403B),
-                    ),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: () => NutritionDialogs.showWeightDialog(
-                  context,
-                  petName,
-                  onUpdate: onUpdate,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF44403B),
+                  shape: BoxShape.circle,
                 ),
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF44403B),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.show_chart,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                "????",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF44403B),
                 ),
               ),
             ],

@@ -89,29 +89,9 @@ class _AiChatPageState extends State<AiChatPage> {
     );
 
     if (result != null && result is Pet) {
-      String newId = DateTime.now().millisecondsSinceEpoch.toString();
-
-      setState(() {
-        record.myPetIds.add(newId);
-        record.petProfiles[newId] = {
-          "name": result.name,
-          "type": result.type,
-          "species": result.species,
-          "age": result.age,
-          "height": result.height,
-          "weight": result.weight,
-          "gender": result.gender,
-          "isNeutered": result.isNeutered,
-          "imagePath": result.imageFile?.path ?? result.imageAsset,
-        };
-        record.weightHistory[newId] = [];
-        if (record.petChecklists[newId] == null) {
-          record.petChecklists[newId] = [];
-        }
-
-        widget.onRefresh?.call();
-        _changePetProfile(newId);
-      });
+      final newId = record.addPetProfileFromPet(result);
+      _changePetProfile(newId);
+      widget.onRefresh?.call();
     }
   }
 

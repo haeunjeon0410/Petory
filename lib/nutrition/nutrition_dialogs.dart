@@ -398,6 +398,7 @@ class NutritionDialogs {
     history.sort(
       (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
     );
+    record.weightHistory[petName] = history;
     record.petProfiles[petName]?['weight'] = history.last['weight'].toString();
     onUpdate();
     Navigator.pop(context);
