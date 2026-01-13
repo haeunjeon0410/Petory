@@ -57,7 +57,7 @@ class _AiChatPageState extends State<AiChatPage> {
     return """
     - 이름: $name
     - 종류: $type ($species)
-    - 나이: ${age}살
+    - 나이: $age살
     - 신체 정보: 키 ${height}cm, 몸무게 ${weight}kg
     - 성별: $gender ($neutered)
     """;

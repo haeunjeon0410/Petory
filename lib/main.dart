@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math'; // 거리 계산 시뮬레이션용
+import 'dart:io'; // File 사용 (아바타 이미지)
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,6 +11,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
 import 'home/home_page.dart';
+import 'home/sheets/pet_register_sheet.dart'; // 팝업에서 프로필 추가를 위해 import
 import 'record/record_page.dart';
 import 'record/record_data.dart' as record;
 import 'nutrition/nutrition_page.dart';
@@ -84,6 +86,203 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   bool _isBadgeRead = false;
   int _lastNotificationCount = 0;
+
+  // 펫 프로필 다이얼로그 표시 (원형 아바타, 깔끔한 화이트 팝업)
+  void _showPetProfileDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final ids = record.myPetIds;
+
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 28,
+            vertical: 24,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      '펫 선택',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, size: 20),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // 아바타 목록(가로 스크롤)
+                SizedBox(
+                  height: 110,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 6),
+                        // 등록된 펫들
+                        ...ids.map((id) {
+                          final p = record.petProfiles[id] ?? {};
+                          final String? imgPath = p['imagePath'];
+                          ImageProvider? imgProvider;
+                          if (imgPath != null &&
+                              imgPath.isNotEmpty &&
+                              !imgPath.startsWith('assets')) {
+                            final file = File(imgPath);
+                            if (file.existsSync()) {
+                              imgProvider = FileImage(file);
+                            }
+                          }
+                          imgProvider ??= AssetImage(
+                            (imgPath ?? '').isNotEmpty
+                                ? imgPath!
+                                : 'assets/images/golden.jpg',
+                          );
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: GestureDetector(
+                              onTap: () {
+                                record.selectedPetId = id;
+                                setState(() {});
+                                Navigator.pop(context);
+                              },
+                              child: Column(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 30,
+                                    backgroundColor: Colors.grey.shade100,
+                                    backgroundImage: imgProvider,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: 68,
+                                    child: Text(
+                                      p['name'] ?? '이름 없음',
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+
+                        // 추가 버튼 (+)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: GestureDetector(
+                            onTap: () async {
+                              // PetRegisterSheet 열기
+                              final result = await showDialog(
+                                context: context,
+                                builder: (ctx) => Dialog(
+                                  backgroundColor: Colors.transparent,
+                                  insetPadding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: PetRegisterSheet(),
+                                ),
+                              );
+
+                              if (result != null) {
+                                // result는 Pet 객체 형태 예상 (home/models/pet_model.dart)
+                                final dynamic pet = result;
+                                String? imagePath;
+                                if (pet.imageFile != null) {
+                                  imagePath = (pet.imageFile as File).path;
+                                } else {
+                                  imagePath = pet.imageAsset;
+                                }
+
+                                // 새 ID 추가 및 선택
+                                final String newId = DateTime.now()
+                                    .millisecondsSinceEpoch
+                                    .toString();
+                                record.myPetIds.add(newId);
+                                record.petProfiles[newId] = {
+                                  "name": pet.name,
+                                  "type": pet.type,
+                                  "species": pet.species,
+                                  "age": pet.age,
+                                  "height": pet.height,
+                                  "weight": pet.weight,
+                                  "gender": pet.gender,
+                                  "isNeutered": pet.isNeutered,
+                                  "imagePath": imagePath,
+                                };
+                                record.petChecklists[newId] = [];
+                                record.selectedPetId = newId;
+                                setState(() {});
+                                Navigator.pop(context); // 팝업 닫기
+                              }
+                            },
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      width: 1.2,
+                                    ),
+                                    color: Colors.white,
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.add,
+                                      color: Colors.black,
+                                      size: 28,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const SizedBox(
+                                  width: 68,
+                                  child: Text(
+                                    '프로필 추가',
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   void _showEmergencyDialog(BuildContext context) {
     showDialog(
@@ -321,6 +520,9 @@ class _MainPageState extends State<MainPage> {
     _lastNotificationCount = activeAlarms.length;
     bool showRedDot = activeAlarms.isNotEmpty && !_isBadgeRead;
 
+    // 언셀렉티드 아이콘/텍스트 색상: 앱바의 발자국/종 아이콘과 동일하게 맞춤
+    final Color unselectedIconColor = Colors.grey.shade500;
+
     // ⭐ [가장 중요한 수정] HomePage에도 onRefresh를 전달합니다.
     // 이제 홈 탭에서 펫을 바꾸면 MainPage가 새로고침되어 레코드 탭도 동기화됩니다.
     final List<Widget> screens = [
@@ -334,22 +536,32 @@ class _MainPageState extends State<MainPage> {
       backgroundColor: const Color(0xFFF1F2ED),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFFF1F2ED),
+        backgroundColor: Colors.white, // 변경: 앱바 배경을 흰색으로
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         leading: Padding(
           padding: const EdgeInsets.only(left: 12),
           child: IconButton(
-            icon: const Icon(CupertinoIcons.paw, color: Colors.black),
-            onPressed: () {},
-          ),
-        ),
-        title: const Text(
-          'Petory',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
+            icon: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.grey.shade300, // 연한 테두리
+                  width: 1.2,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  CupertinoIcons.paw,
+                  color: Colors.grey.shade500, // 연한 회색 아이콘
+                  size: 18,
+                ),
+              ),
+            ),
+            tooltip: '펫 프로필',
+            onPressed: () => _showPetProfileDialog(context),
           ),
         ),
         actions: [
@@ -361,9 +573,10 @@ class _MainPageState extends State<MainPage> {
                 // [추가] 1. 비상 연락망 버튼 (왼쪽)
                 IconButton(
                   icon: const Icon(
-                    Icons.emergency_outlined,
+                    Icons.local_hospital_rounded,
                     color: Colors.redAccent,
                   ),
+                  tooltip: '비상 연락처',
                   onPressed: () => _showEmergencyDialog(context),
                 ),
 
@@ -372,9 +585,9 @@ class _MainPageState extends State<MainPage> {
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         CupertinoIcons.bell,
-                        color: Colors.black,
+                        color: Colors.grey.shade500, // 연한 회색 종 아이콘
                       ),
                       onPressed: () => _showNotificationDialog(context),
                     ),
@@ -407,24 +620,19 @@ class _MainPageState extends State<MainPage> {
             child: Row(
               children: List.generate(4, (index) {
                 final isSelected = _currentIndex == index;
+                // 변경: 레이블에 더 적합한 아이콘으로 교체
                 final List<IconData> icons = [
-                  CupertinoIcons.house_fill,
-                  CupertinoIcons.photo_on_rectangle,
-                  CupertinoIcons.heart,
-                  CupertinoIcons.chat_bubble_text,
+                  Icons.home, // 홈
+                  Icons.restaurant, // 식사
+                  Icons.trending_up, // 변화 (트렌드)
+                  Icons.chat_bubble_rounded, // AI채팅
                 ];
-                final List<String> labels = ['홈', '기록', '영양관리', 'AI 채팅'];
+                final List<String> labels = ['홈', '식사', '변화', 'AI채팅'];
                 return Expanded(
                   child: GestureDetector(
                     onTap: () => setState(() => _currentIndex = index),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFFF1F2ED)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -433,7 +641,7 @@ class _MainPageState extends State<MainPage> {
                             size: 20,
                             color: isSelected
                                 ? const Color(0xFF44403B)
-                                : Colors.grey,
+                                : unselectedIconColor,
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -442,7 +650,7 @@ class _MainPageState extends State<MainPage> {
                               fontSize: 9,
                               color: isSelected
                                   ? const Color(0xFF44403B)
-                                  : Colors.grey,
+                                  : unselectedIconColor,
                             ),
                           ),
                         ],

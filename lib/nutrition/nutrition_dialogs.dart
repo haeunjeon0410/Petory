@@ -273,7 +273,7 @@ class NutritionDialogs {
                     ),
                     calendarBuilders: CalendarBuilders(
                       dowBuilder: (context, day) {
-                        if (day.weekday == DateTime.sunday)
+                        if (day.weekday == DateTime.sunday) {
                           return const Center(
                             child: Text(
                               '일',
@@ -284,7 +284,8 @@ class NutritionDialogs {
                               ),
                             ),
                           );
-                        if (day.weekday == DateTime.saturday)
+                        }
+                        if (day.weekday == DateTime.saturday) {
                           return const Center(
                             child: Text(
                               '토',
@@ -295,10 +296,11 @@ class NutritionDialogs {
                               ),
                             ),
                           );
+                        }
                         return null;
                       },
                       defaultBuilder: (context, day, focusedDay) {
-                        if (day.weekday == DateTime.sunday)
+                        if (day.weekday == DateTime.sunday) {
                           return Center(
                             child: Text(
                               '${day.day}',
@@ -308,7 +310,8 @@ class NutritionDialogs {
                               ),
                             ),
                           );
-                        if (day.weekday == DateTime.saturday)
+                        }
+                        if (day.weekday == DateTime.saturday) {
                           return Center(
                             child: Text(
                               '${day.day}',
@@ -318,6 +321,7 @@ class NutritionDialogs {
                               ),
                             ),
                           );
+                        }
                         return null;
                       },
                     ),

@@ -438,10 +438,11 @@ class MonotoneWeightChartPainter extends CustomPainter {
       double x = paddingLeft + (i * xInterval);
       double weight = history[i]['weight'];
       double y = chartHeight - ((weight - minW) / (maxW - minW) * chartHeight);
-      if (i == 0)
+      if (i == 0) {
         path.moveTo(x, y);
-      else
+      } else {
         path.lineTo(x, y);
+      }
       if (i > 0) {
         String dateStr = DateFormat('M/d').format(history[i]['date']);
         _drawText(
