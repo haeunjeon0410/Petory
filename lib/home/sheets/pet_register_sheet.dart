@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/pet_model.dart';
 import '../widgets/common_text_field.dart';
@@ -57,6 +58,7 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
   File? _selectedImage;
   String? _savedImageAsset;
   final ImagePicker _picker = ImagePicker();
+  bool _isPickingImage = false;
 
   @override
   void initState() {
@@ -93,14 +95,24 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-        _imageHasError = false; // 에러 해제
-      });
+    if (_isPickingImage) {
+      return;
+    }
+    _isPickingImage = true;
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+      );
+      if (pickedFile != null && mounted) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _imageHasError = false;
+        });
+      }
+    } on PlatformException {
+      // Ignore "already_active" race; user can tap again after picker closes.
+    } finally {
+      _isPickingImage = false;
     }
   }
 

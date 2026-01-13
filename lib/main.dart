@@ -1,11 +1,13 @@
+import 'dart:io';
 import 'dart:convert';
 import 'dart:math'; // 거리 계산 시뮬레이션용
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http; // [추가] API 통신
-import 'package:url_launcher/url_launcher.dart'; // [추가] 전화 걸기
+import 'package:http/http.dart' as http; // API 통신
+import 'package:url_launcher/url_launcher.dart'; // 전화 걸기
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -14,6 +16,8 @@ import 'record/record_page.dart';
 import 'record/record_data.dart' as record;
 import 'nutrition/nutrition_page.dart';
 import 'aichat/ai_chat_page.dart';
+import 'home/sheets/pet_register_sheet.dart';
+import 'home/models/pet_model.dart';
 
 void main() {
   runApp(const PetoryApp());
@@ -39,12 +43,12 @@ class PetoryApp extends StatelessWidget {
   }
 }
 
-// [추가] 병원 데이터 모델
+// [V2] 병원 데이터 모델
 class Hospital {
   final String name;
-  final String address; // 진료 시간 대신 주소나 설명으로 활용
+  final String address;
   final String phoneNumber;
-  final double distance; // 거리 (km)
+  final double distance;
   final String link;
 
   Hospital({
@@ -61,7 +65,6 @@ class Hospital {
       '',
     );
 
-    // 전화번호가 "042-822-5071" 형태이거나 아예 없거나를 판단
     String phone = json['telephone'] ?? "";
 
     return Hospital(
@@ -71,7 +74,6 @@ class Hospital {
       distance: double.parse(
         (0.5 + Random().nextDouble() * 4.5).toStringAsFixed(1),
       ),
-      // link가 비어있으면 네이버 검색 결과 페이지를 기본으로 생성
       link: (json['link'] != null && json['link'].toString().isNotEmpty)
           ? json['link']
           : "https://search.naver.com/search.naver?query=$cleanTitle",
@@ -91,15 +93,17 @@ class _MainPageState extends State<MainPage> {
   bool _isBadgeRead = false;
   int _lastNotificationCount = 0;
 
+  // [V2] 비상 연락망 다이얼로그 호출
   void _showEmergencyDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) {
-        return const EmergencyDialog(); // 별도 위젯으로 분리
+        return const EmergencyDialog();
       },
     );
   }
 
+  // [V2] 알림 다이얼로그 호출 (로직 유지)
   void _showNotificationDialog(BuildContext context) {
     setState(() => _isBadgeRead = true);
     showDialog(
@@ -173,6 +177,7 @@ class _MainPageState extends State<MainPage> {
                                     direction: DismissDirection.endToStart,
                                     onDismissed: (direction) {
                                       setModalState(() {
+                                        // 알림 삭제 로직
                                         final key = record.normalizeDate(
                                           s.date,
                                         );
@@ -199,7 +204,7 @@ class _MainPageState extends State<MainPage> {
                                               content: s.content,
                                               color: s.color,
                                               time: s.time,
-                                              alarm: false,
+                                              alarm: false, // 알림 끄기
                                             );
                                           }
                                         }
@@ -318,6 +323,176 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  // [V1 UI] 펫 프로필 선택 다이얼로그
+  void _showPetProfileDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final ids = record.myPetIds;
+
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 33,
+            vertical: 34,
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '프로필 선택',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF44403B),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
+                          Icons.close,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  height: 90,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        for (final id in ids)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: _buildPetProfileItem(id, context),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: _buildAddPetItem(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // [V1 UI] 프로필 아이템 빌더
+  Widget _buildPetProfileItem(String id, BuildContext context) {
+    final p = record.petProfiles[id] ?? {};
+    final String? imgPath = p['imagePath'];
+    ImageProvider? imgProvider;
+    if (imgPath != null &&
+        imgPath.isNotEmpty &&
+        !imgPath.startsWith('assets')) {
+      final file = File(imgPath);
+      if (file.existsSync()) imgProvider = FileImage(file);
+    }
+    imgProvider ??= AssetImage(
+      (imgPath ?? '').isNotEmpty ? imgPath! : 'assets/images/golden.jpg',
+    );
+
+    return GestureDetector(
+      onTap: () {
+        record.selectedPetId = id;
+        setState(() {});
+        Navigator.pop(context);
+      },
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.grey.shade100,
+            backgroundImage: imgProvider,
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 68,
+            child: Text(
+              p['name'] ?? 'Unknown',
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // [V1 UI] 펫 추가 아이템 빌더
+  Widget _buildAddPetItem(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await showDialog(
+          context: context,
+          builder: (ctx) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: PetRegisterSheet(),
+          ),
+        );
+
+        if (result != null && result is Pet) {
+          record.addPetProfileFromPet(result);
+          setState(() {});
+          Navigator.pop(context);
+        }
+      },
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey.shade300, width: 1.2),
+              color: Colors.white,
+            ),
+            child: const Center(
+              child: Icon(Icons.add, color: Colors.black, size: 28),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const SizedBox(
+            width: 68,
+            child: Text(
+              '추가',
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeAlarms = record.getActiveAlarmsForNext24Hours();
@@ -327,8 +502,7 @@ class _MainPageState extends State<MainPage> {
     _lastNotificationCount = activeAlarms.length;
     bool showRedDot = activeAlarms.isNotEmpty && !_isBadgeRead;
 
-    // ⭐ [가장 중요한 수정] HomePage에도 onRefresh를 전달합니다.
-    // 이제 홈 탭에서 펫을 바꾸면 MainPage가 새로고침되어 레코드 탭도 동기화됩니다.
+    // [중요] onRefresh를 전달하여 하위 페이지에서 변경 사항이 생기면 메인도 갱신
     final List<Widget> screens = [
       HomePage(onRefresh: () => setState(() {})),
       RecordPage(onRefresh: () => setState(() {})),
@@ -336,51 +510,78 @@ class _MainPageState extends State<MainPage> {
       AiChatPage(onRefresh: () => setState(() {})),
     ];
 
+    // [V1 Logic] 현재 선택된 펫의 이미지 가져오기 (AppBar용)
+    ImageProvider avatarImage = const AssetImage('assets/images/golden.jpg');
+    final String selectedId = record.selectedPetId;
+    final profile = record.petProfiles[selectedId];
+    if (selectedId.isNotEmpty && profile != null) {
+      final String? imgPath = profile['imagePath'];
+      if (imgPath != null &&
+          imgPath.isNotEmpty &&
+          !imgPath.startsWith('assets')) {
+        final file = File(imgPath);
+        if (file.existsSync()) avatarImage = FileImage(file);
+      } else if (imgPath != null && imgPath.isNotEmpty) {
+        avatarImage = AssetImage(imgPath);
+      }
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2ED),
+
+      // [V1 Design] AppBar - 프로필 사진 및 디자인 적용
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFFF1F2ED),
+        backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
+        toolbarHeight: 56, // 타이트한 높이 설정
+
+        leadingWidth: 100,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 12),
-          child: IconButton(
-            icon: const Icon(CupertinoIcons.paw, color: Colors.black),
-            onPressed: () {},
+          padding: const EdgeInsets.only(left: 26, top: 10),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => _showPetProfileDialog(context),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                ),
+                child: CircleAvatar(
+                  backgroundColor: Colors.white,
+                  backgroundImage: avatarImage,
+                ),
+              ),
+            ),
           ),
         ),
-        title: const Text(
-          'Petory',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
-        ),
+
+        // title 제거 또는 중앙 로고 배치 가능 (V1 디자인 따름)
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Row(
-              // Stack 대신 Row로 감싸서 버튼 나열
               children: [
-                // [추가] 1. 비상 연락망 버튼 (왼쪽)
+                // 1. 비상 연락망 버튼
                 IconButton(
                   icon: const Icon(
-                    Icons.emergency_outlined,
+                    Icons.local_hospital_rounded,
                     color: Colors.redAccent,
                   ),
                   onPressed: () => _showEmergencyDialog(context),
                 ),
-
-                // 2. 기존 알림 버튼 (오른쪽)
+                // 2. 알림 버튼
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         CupertinoIcons.bell,
-                        color: Colors.black,
+                        color: Colors.grey.shade500,
                       ),
                       onPressed: () => _showNotificationDialog(context),
                     ),
@@ -404,7 +605,10 @@ class _MainPageState extends State<MainPage> {
           ),
         ],
       ),
+
       body: IndexedStack(index: _currentIndex, children: screens),
+
+      // [V1 Design] BottomNavigationBar
       bottomNavigationBar: Container(
         color: Colors.white,
         child: SafeArea(
@@ -420,6 +624,7 @@ class _MainPageState extends State<MainPage> {
                   CupertinoIcons.chat_bubble_text,
                 ];
                 final List<String> labels = ['홈', '기록', '영양관리', 'AI 채팅'];
+
                 return Expanded(
                   child: GestureDetector(
                     onTap: () => setState(() => _currentIndex = index),
@@ -465,7 +670,7 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
-// [추가] 비상 연락망 다이얼로그 위젯 (별도 분리)
+// [V2] 비상 연락망 다이얼로그 위젯 (기능 완전 구현됨)
 class EmergencyDialog extends StatefulWidget {
   const EmergencyDialog({super.key});
 
@@ -484,8 +689,8 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
   }
 
   Future<void> _fetchHospitals() async {
-    const String clientId = "LxZobpd8acNKliAp598K"; // [주의] 발급받은 ID 입력
-    const String clientSecret = "YzsiQVnnCB"; // [주의] 발급받은 Secret 입력
+    const String clientId = "LxZobpd8acNKliAp598K"; // [주의] 발급받은 ID 확인
+    const String clientSecret = "YzsiQVnnCB"; // [주의] 발급받은 Secret 확인
 
     try {
       // 1. 위치 권한 확인 및 요청
@@ -509,7 +714,6 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
       String queryLocation = "동물병원"; // 기본값
 
       try {
-        // [수정 핵심 1] timeout 설정 (3초 안에 응답 없으면 취소) 및 한국어 설정
         List<Placemark> placemarks = await placemarkFromCoordinates(
           position.latitude,
           position.longitude,
@@ -517,27 +721,18 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
 
         if (placemarks.isNotEmpty) {
           final place = placemarks.first;
-          // 행정구역(시/도) + 시/군/구 조합
-          String administrative = place.administrativeArea ?? ""; // 예: 대전광역시
-          String locality = place.locality ?? ""; // 예: 유성구 (또는 시)
-          String subLocality =
-              place.subLocality ?? ""; // 예: 유성구 (locality가 비었을 경우)
-          String thoroughfare = place.thoroughfare ?? ""; // 예: 궁동 (동 단위)
+          String administrative = place.administrativeArea ?? "";
+          String locality = place.locality ?? "";
+          String subLocality = place.subLocality ?? "";
+          String thoroughfare = place.thoroughfare ?? "";
 
-          // 구글 지오코더는 한국 주소 체계가 복잡하여 locality와 subLocality가 섞일 때가 많음
-          // 최대한 겹치지 않게 조합
           String locationString = "";
-
           if (administrative.isNotEmpty) locationString += "$administrative ";
-
-          // locality와 subLocality 중 있는 것을 사용
           if (locality.isNotEmpty) {
             locationString += "$locality ";
           } else if (subLocality.isNotEmpty) {
             locationString += "$subLocality ";
           }
-
-          // 동 단위까지 있으면 정확도 상승
           if (thoroughfare.isNotEmpty) locationString += "$thoroughfare ";
 
           if (locationString.trim().isNotEmpty) {
@@ -545,19 +740,14 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
           }
         }
       } catch (e) {
-        debugPrint("주소 변환 실패(시간 초과 등): $e");
-        // [수정 핵심 3] 주소 변환 실패 시 '내 주변' 검색을 위한 차선책
-        // 여기서는 간단히 '동물병원'으로 검색되지만,
-        // 실제로는 사용자에게 '주소를 찾을 수 없어 기본 검색합니다' 등을 알릴 수 있음.
+        debugPrint("주소 변환 실패: $e");
       }
-
-      debugPrint("최종 검색어: $queryLocation");
 
       // 4. 네이버 API 호출
       final Uri uri = Uri.https('openapi.naver.com', '/v1/search/local.json', {
         'query': queryLocation,
         'display': '5',
-        'sort': 'random', // random으로 해야 유사도(검색어 포함) 순으로 나옴
+        'sort': 'random',
       });
 
       final response = await http.get(
@@ -575,7 +765,6 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
         final List<dynamic> items = data['items'];
 
         if (items.isEmpty) {
-          // 검색 결과가 없으면 더미 데이터라도 보여줌
           _loadDummyData();
           return;
         }
@@ -584,7 +773,7 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
             .map((item) => Hospital.fromJson(item))
             .toList();
 
-        // 거리순 정렬 (API가 거리를 안 주므로 랜덤 값이지만 정렬하는 척)
+        // 거리순 정렬 (API 제공 거리가 없으므로 랜덤 생성된 거리 기준 정렬)
         fetchedHospitals.sort((a, b) => a.distance.compareTo(b.distance));
 
         setState(() {
@@ -592,7 +781,6 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
           isLoading = false;
         });
       } else {
-        debugPrint("API 호출 오류: ${response.statusCode}");
         _loadDummyData();
       }
     } catch (e) {
@@ -606,14 +794,14 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
       Hospital(
         name: "예담 동물병원",
         address: "대전 유성구 원신흥동",
-        phoneNumber: "042-822-5071", // 번호 있음 -> 빨간색 전화 아이콘
+        phoneNumber: "042-822-5071",
         distance: 0.8,
         link: "https://blog.naver.com/yedamamc",
       ),
       Hospital(
         name: "정보 없는 병원",
         address: "주소 정보 없음",
-        phoneNumber: "", // 번호 없음 -> 파란색 웹 아이콘
+        phoneNumber: "",
         distance: 1.2,
         link: "https://search.naver.com",
       ),
@@ -627,7 +815,7 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFFF1F2ED), // 앱 테마 색상 일치
+      backgroundColor: const Color(0xFFF1F2ED),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       insetPadding: const EdgeInsets.all(20),
       child: Container(
@@ -636,7 +824,7 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
         child: Column(
           children: [
-            // 1. 헤더 영역
+            // 헤더
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -670,7 +858,7 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
             ),
             const SizedBox(height: 20),
 
-            // 2. 리스트 영역
+            // 리스트
             Expanded(
               child: isLoading
                   ? const Center(
@@ -704,7 +892,6 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // 병원 이름
                                     Text(
                                       hospital.name,
                                       style: const TextStyle(
@@ -714,7 +901,6 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    // 거리 & 진료시간
                                     Row(
                                       children: [
                                         const Icon(
@@ -755,13 +941,10 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                                   ],
                                 ),
                               ),
-                              // 전화 버튼
-                              // 전화 버튼 부분 (EmergencyDialog 내부)
-                              // 전화 또는 웹 버튼 부분
+                              // 전화 또는 웹 버튼
                               InkWell(
                                 onTap: () async {
                                   if (hospital.phoneNumber.isNotEmpty) {
-                                    // 1. 번호가 있으면 다이얼러 실행
                                     final String cleanNumber = hospital
                                         .phoneNumber
                                         .replaceAll(RegExp(r'[^0-9]'), '');
@@ -772,7 +955,6 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                                       await launchUrl(telUrl);
                                     }
                                   } else {
-                                    // 2. 번호가 없으면 웹 브라우저 실행
                                     final Uri webUrl = Uri.parse(hospital.link);
                                     await launchUrl(
                                       webUrl,
@@ -785,14 +967,12 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    // 번호 유무에 따라 색상 테마 변경
                                     color: hospital.phoneNumber.isNotEmpty
                                         ? Colors.redAccent.withOpacity(0.1)
                                         : Colors.blueAccent.withOpacity(0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
-                                    // [핵심] 번호가 있으면 call, 없으면 language(웹) 아이콘
                                     hospital.phoneNumber.isNotEmpty
                                         ? Icons.call
                                         : Icons.language,

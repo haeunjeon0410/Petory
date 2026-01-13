@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'nutrition_dialogs.dart';
 
 // ==========================================
-// 1. 사료 계산기 카드 (기존 유지)
+// 1. 사료 계산기 카드 (V1 디자인 + V2 데이터 파싱)
 // ==========================================
 class FoodCalculatorCard extends StatelessWidget {
   final Map<String, dynamic> profile;
@@ -23,9 +23,9 @@ class FoodCalculatorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String petType = profile['type'] ?? "강아지";
+    // [V2 Logic] 안전한 데이터 파싱
+    String petType = profile['type']?.toString() ?? "강아지";
     String emoji = petType == "강아지" ? "🐶" : "🐱";
-
     String weightStr = profile['weight']?.toString() ?? '?';
     String ageStr = profile['age']?.toString() ?? '?';
     bool isNeutered =
@@ -48,6 +48,7 @@ class FoodCalculatorCard extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // 헤더 영역
           Row(
             children: [
               Container(
@@ -75,6 +76,7 @@ class FoodCalculatorCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
+          // 정보 표시 영역 (V1 디자인)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
@@ -91,9 +93,11 @@ class FoodCalculatorCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
+          // 활동량 선택 (V1 디자인)
           _buildActivitySelector(),
           const SizedBox(height: 18),
 
+          // 결과 박스 (V1 디자인)
           _buildResultBox(foodAmount),
         ],
       ),
@@ -193,7 +197,7 @@ class FoodCalculatorCard extends StatelessWidget {
 }
 
 // ==========================================
-// 2. 체중 추이 그래프 카드 (X축, Y축 전면 수정)
+// 2. 체중 추이 그래프 카드 (V2 기능 + V1 스타일 컨테이너)
 // ==========================================
 class WeightTrendCard extends StatefulWidget {
   final String petName;
@@ -226,15 +230,15 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. 데이터 준비
+    // --------------------------------------------------------
+    // [V2 Logic] 데이터 준비 및 선형 회귀 분석
+    // --------------------------------------------------------
     List<_ChartData> chartDataList = _prepareChartData();
 
-    // 2. 변화량 계산 (최근 - 직전)
     double diff = 0;
     List<Map<String, dynamic>> sortedHistory = List.from(widget.history);
     sortedHistory.sort((a, b) => (a['date'] as DateTime).compareTo(b['date']));
 
-    // 중복 제거된 전체 히스토리 (하루 1개)
     Map<String, Map<String, dynamic>> distinctMap = {};
     for (var h in sortedHistory) {
       DateTime d = h['date'];
@@ -248,13 +252,9 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           fullHistory[fullHistory.length - 2]['weight'];
     }
 
-    // --------------------------------------------------------
-    // [추가] 3. 선형 회귀 분석 (Linear Regression) 및 예측
-    // --------------------------------------------------------
     List<FlSpot> trendSpots = [];
     double? predictedWeightIn30Days;
 
-    // 데이터가 1개라도 있으면 예측 값 생성
     if (fullHistory.isNotEmpty) {
       if (fullHistory.length >= 2) {
         // [케이스 A] 데이터가 2개 이상일 때 -> 선형 회귀(추세선) 계산
@@ -308,25 +308,22 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
       } else {
         // [케이스 B] 데이터가 1개일 때 -> 현재 체중 유지로 가정
         predictedWeightIn30Days = fullHistory.first['weight'];
-        // 추세선(trendSpots)은 점 2개가 필요하므로 그리지 않음 (빈 리스트 유지)
       }
 
-      // 음수 방지 (공통)
       if (predictedWeightIn30Days != null && predictedWeightIn30Days < 0) {
         predictedWeightIn30Days = 0;
       }
     }
 
-    // --------------------------------------------------------
-    // 4. 메인 그래프 데이터 (Spots)
+    // 메인 그래프 데이터
     List<FlSpot> mainSpots = chartDataList
         .map((e) => FlSpot(e.xIndex.toDouble(), e.weight))
         .toList();
 
-    // 5. Y축 범위 계산 (메인 데이터 + 추세선 모두 포함하도록)
+    // Y축 범위 계산
     List<double> allYValues = [
       ...mainSpots.map((e) => e.y),
-      ...trendSpots.map((e) => e.y), // 추세선 값도 범위 계산에 포함
+      ...trendSpots.map((e) => e.y),
     ];
 
     double minW, maxW, yInterval;
@@ -440,7 +437,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           _buildPeriodTabs(),
           const SizedBox(height: 24),
 
-          // 차트 영역
+          // 차트 영역 (V2 fl_chart 사용)
           SizedBox(
             height: 200,
             width: double.infinity,
@@ -458,9 +455,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                           getTooltipColor: (spot) => const Color(0xFF44403B),
                           getTooltipItems: (touchedSpots) {
                             return touchedSpots.map((spot) {
-                              // 추세선(barIndex 1)은 툴팁 제외
                               if (spot.barIndex == 1) return null;
-
                               var data = chartDataList.firstWhere(
                                 (e) => e.xIndex == spot.x.toInt(),
                                 orElse: () => _ChartData(0, 0, ''),
@@ -501,9 +496,9 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                             interval: yInterval,
                             getTitlesWidget: (value, meta) {
                               double step = (value - minW) / yInterval;
-                              if ((step - step.round()).abs() > 0.01)
+                              if ((step - step.round()).abs() > 0.01) {
                                 return const SizedBox();
-
+                              }
                               String text = (value % 1 == 0)
                                   ? value.toInt().toString()
                                   : value.toStringAsFixed(1);
@@ -546,7 +541,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                                 now.day,
                               );
                               int offset = 6 - index;
-
                               String text = "";
                               bool isLast = (offset == 0);
 
@@ -600,7 +594,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                       minY: minW,
                       maxY: maxW,
                       lineBarsData: [
-                        // 1. 메인 데이터 선 (실선)
                         LineChartBarData(
                           spots: mainSpots,
                           isCurved: true,
@@ -633,15 +626,14 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                             ),
                           ),
                         ),
-                        // 2. [추가] 추세선 (점선)
                         if (trendSpots.isNotEmpty)
                           LineChartBarData(
                             spots: trendSpots,
                             isCurved: false,
-                            color: Colors.grey.withOpacity(0.5), // 연한 회색
+                            color: Colors.grey.withOpacity(0.5),
                             barWidth: 2,
-                            dashArray: [5, 5], // [5px 선, 5px 공백] -> 점선 효과
-                            dotData: const FlDotData(show: false), // 점 숨김
+                            dashArray: [5, 5],
+                            dotData: const FlDotData(show: false),
                           ),
                       ],
                     ),
@@ -649,7 +641,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           ),
           const SizedBox(height: 28),
 
-          // 하단 정보 (현재 체중 & 변화량)
+          // 하단 정보
           Row(
             children: [
               Expanded(
@@ -671,14 +663,14 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
             ],
           ),
 
-          // [추가] 미래 예측 정보 표시
+          // [V2 Logic] 미래 예측 박스
           if (predictedWeightIn30Days != null) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF8E1), // 연한 노란색 배경 (강조)
+                color: const Color(0xFFFFF8E1),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFFFECB3)),
               ),
@@ -722,7 +714,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
     );
   }
 
-  // (기존 데이터 처리 함수들 유지)
+  // 데이터 처리 로직 (V2)
   List<_ChartData> _prepareChartData() {
     List<Map<String, dynamic>> rawHistory = widget.history;
     if (rawHistory.isEmpty) return [];

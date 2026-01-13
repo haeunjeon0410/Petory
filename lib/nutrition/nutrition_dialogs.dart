@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../record/record_data.dart' as record;
-import '../home/widgets/common_text_field.dart'; // [필수] CommonTextField 사용을 위해 import
+import '../home/widgets/common_text_field.dart'; // CommonTextField 위치에 맞게 경로 수정 필요
 
 class NutritionDialogs {
   // [체중 등록 다이얼로그]
@@ -95,14 +95,14 @@ class NutritionDialogs {
                     ),
                     const SizedBox(height: 20),
 
-                    // [수정] CommonTextField 사용 (프로필 등록과 동일한 디자인/기능)
+                    // 체중 입력 필드 (CommonTextField 사용)
                     CommonTextField(
                       controller: weightController,
                       focusNode: weightFocus,
                       hint: "체중을 입력해주세요",
                       isNumber: true, // 숫자와 소수점만 입력 허용
-                      maxLength: 5, // 길이 제한
-                      errorText: errorText, // 에러 메시지 표시
+                      maxLength: 6,
+                      errorText: errorText,
                     ),
 
                     const SizedBox(height: 24),
@@ -126,7 +126,7 @@ class NutritionDialogs {
 
                             if (text.isEmpty) {
                               setState(() => errorText = "체중을 입력해주세요");
-                              weightFocus.requestFocus(); // 포커스 이동
+                              weightFocus.requestFocus();
                               return;
                             }
 
@@ -164,7 +164,7 @@ class NutritionDialogs {
                               "weight": w,
                             });
 
-                            onUpdate();
+                            onUpdate(); // 화면 갱신 콜백 호출
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
@@ -197,7 +197,7 @@ class NutritionDialogs {
     );
   }
 
-  // [편집/삭제 다이얼로그]
+  // [편집/삭제 다이얼로그] - WeightTrendCard에서 그래프 클릭 시 사용됨
   static void showEditDeleteDialog({
     required BuildContext context,
     required String petName,
@@ -241,7 +241,7 @@ class NutritionDialogs {
                     ),
                     const SizedBox(height: 20),
 
-                    // [수정] CommonTextField 사용
+                    // CommonTextField 사용
                     CommonTextField(
                       controller: weightController,
                       focusNode: weightFocus,

@@ -8,12 +8,16 @@ class CalendarSection extends StatefulWidget {
   final String selectedPetName;
   final VoidCallback? onRefresh; // ⭐ 추가: 상위 위젯을 새로고침하기 위한 콜백
   final Function(DateTime selectedDay, DateTime focusedDay)? onDayChanged;
+  final DateTime? selectedDay;
+  final DateTime? focusedDay;
 
   const CalendarSection({
     super.key,
     required this.selectedPetName,
     this.onRefresh, // ⭐ 추가
-    this.onDayChanged
+    this.onDayChanged,
+    this.selectedDay,
+    this.focusedDay
   });
 
   @override
@@ -23,6 +27,29 @@ class CalendarSection extends StatefulWidget {
 class _CalendarSectionState extends State<CalendarSection> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
+
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selectedDay != null) _selectedDay = widget.selectedDay!;
+    if (widget.focusedDay != null) _focusedDay = widget.focusedDay!;
+  }
+
+  @override
+  void didUpdateWidget(covariant CalendarSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    bool shouldUpdate = false;
+    if (widget.selectedDay != null && !isSameDay(_selectedDay, widget.selectedDay)) {
+      _selectedDay = widget.selectedDay!;
+      shouldUpdate = true;
+    }
+    if (widget.focusedDay != null && !isSameDay(_focusedDay, widget.focusedDay)) {
+      _focusedDay = widget.focusedDay!;
+      shouldUpdate = true;
+    }
+    if (shouldUpdate) setState(() {});
+  }
 
   List<record.Schedule> _getSortedSchedules(DateTime day) {
     if (widget.selectedPetName.isEmpty) return [];
@@ -191,9 +218,11 @@ class _CalendarSectionState extends State<CalendarSection> {
                                         setState(() {});
                                         // ⭐ 데이터 변경 알림
                                         widget.onRefresh?.call();
-                                        if (widget.onDayChanged != null) widget
+                                        if (widget.onDayChanged != null) {
+                                          widget
                                             .onDayChanged!(
                                             _selectedDay, _focusedDay);
+                                        }
                                       }
                                     }),
                                 IconButton(icon: const Icon(
@@ -207,9 +236,11 @@ class _CalendarSectionState extends State<CalendarSection> {
                                       setState(() {});
                                       // ⭐ 데이터 변경 알림
                                       widget.onRefresh?.call();
-                                      if (widget.onDayChanged != null) widget
+                                      if (widget.onDayChanged != null) {
+                                        widget
                                           .onDayChanged!(
                                           _selectedDay, _focusedDay);
+                                      }
                                     }),
                               ]),
                             );
@@ -240,8 +271,10 @@ class _CalendarSectionState extends State<CalendarSection> {
                               setState(() {});
                               // ⭐ 데이터 변경 알림 (빨간 점 갱신)
                               widget.onRefresh?.call();
-                              if (widget.onDayChanged != null) widget
+                              if (widget.onDayChanged != null) {
+                                widget
                                   .onDayChanged!(_selectedDay, _focusedDay);
+                              }
                             }
                           },
                           child: const Text('일정 추가', style: TextStyle(
@@ -283,19 +316,24 @@ class _CalendarSectionState extends State<CalendarSection> {
             headerVisible: false,
             rowHeight: 72,
             daysOfWeekHeight: 40,
+            sixWeekMonthsEnforced: true,
             availableGestures: AvailableGestures.horizontalSwipe,
             onPageChanged: (focusedDay) {
               setState(() => _focusedDay = focusedDay);
-              if (widget.onDayChanged != null) widget.onDayChanged!(
+              if (widget.onDayChanged != null) {
+                widget.onDayChanged!(
                   _selectedDay, _focusedDay);
+              }
             },
             onDaySelected: (selectedDay, focusedDay) {
               setState(() {
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
               });
-              if (widget.onDayChanged != null) widget.onDayChanged!(
+              if (widget.onDayChanged != null) {
+                widget.onDayChanged!(
                   _selectedDay, _focusedDay);
+              }
               _showScheduleListDialog(context, selectedDay);
             },
             calendarBuilders: CalendarBuilders(
