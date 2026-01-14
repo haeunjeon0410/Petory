@@ -383,14 +383,14 @@ class _CalendarSectionState extends State<CalendarSection> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
+            color: const Color(0xFF44403B).withOpacity(0.04),
+            blurRadius: 12,
             offset: const Offset(0, 6),
           ),
         ],
@@ -405,8 +405,8 @@ class _CalendarSectionState extends State<CalendarSection> {
             focusedDay: _focusedDay,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             headerVisible: false,
-            rowHeight: 72,
-            daysOfWeekHeight: 40,
+            rowHeight: 64,
+            daysOfWeekHeight: 32,
             sixWeekMonthsEnforced: true,
             availableGestures: AvailableGestures.horizontalSwipe,
             onPageChanged: (focusedDay) {
@@ -468,37 +468,14 @@ class _CalendarSectionState extends State<CalendarSection> {
             ),
           ),
         ),
-        Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.chevron_right, color: Color(0xFF44403B)),
-              padding: iconPadding,
-              constraints: iconConstraints,
-              onPressed: () => setState(
-                () =>
-                    _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1),
-              ),
-            ),
-            const SizedBox(width: 4),
-            GestureDetector(
-              onTap: _showAlbumDialog,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F2ED),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  '앨범',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF44403B),
-                  ),
-                ),
-              ),
-            ),
-          ],
+        IconButton(
+          icon: const Icon(Icons.chevron_right, color: Color(0xFF44403B)),
+          padding: iconPadding,
+          constraints: iconConstraints,
+          onPressed: () => setState(
+            () => _focusedDay =
+                DateTime(_focusedDay.year, _focusedDay.month + 1),
+          ),
         ),
       ],
     );

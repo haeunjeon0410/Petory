@@ -284,7 +284,7 @@ class _NutritionPageState extends State<NutritionPage> {
 
     return Column(
       children: [
-        const SizedBox(height: 30),
+        const SizedBox(height: 24),
         Text(
           '$dateText $petName의 체중은?',
           style: const TextStyle(
@@ -298,22 +298,22 @@ class _NutritionPageState extends State<NutritionPage> {
           '${currentWeight.toStringAsFixed(2)} kg',
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 52,
+            fontSize: 48,
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 32),
 
         Container(
-          width: 240,
-          height: 240,
+          width: 220,
+          height: 220,
           decoration: BoxDecoration(
             color: const Color(0xFF7FA6E1),
             borderRadius: BorderRadius.circular(40),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF5C85C0),
-                offset: const Offset(0, 12),
+                offset: const Offset(0, 10),
                 blurRadius: 0,
               ),
             ],
@@ -322,10 +322,10 @@ class _NutritionPageState extends State<NutritionPage> {
             alignment: Alignment.center,
             children: [
               Positioned(
-                top: 45,
+                top: 40,
                 child: Container(
-                  width: 100,
-                  height: 50,
+                  width: 92,
+                  height: 46,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
@@ -340,30 +340,30 @@ class _NutritionPageState extends State<NutritionPage> {
                     padding: const EdgeInsets.only(bottom: 2.0),
                     child: const Icon(
                       Icons.arrow_drop_up_rounded,
-                      size: 50,
+                      size: 46,
                       color: Colors.redAccent,
                     ),
                   ),
                 ),
               ),
               Positioned(
-                bottom: 55,
+                bottom: 50,
                 child: Icon(
                   Icons.pets,
-                  size: 45,
+                  size: 42,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 50),
+        const SizedBox(height: 40),
 
         GestureDetector(
           onTap: () => _openWeightDialog(petId),
           child: Container(
-            width: 260,
-            padding: const EdgeInsets.symmetric(vertical: 18),
+            width: 240,
+            padding: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(30),
@@ -466,11 +466,11 @@ class _NutritionPageState extends State<NutritionPage> {
 
                   // (2) 콘텐츠
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      child: Column(
-                        children: [
-                          _showStats
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final content = _showStats
                               ? _buildStatsView(
                                   displayPetName,
                                   history,
@@ -481,8 +481,20 @@ class _NutritionPageState extends State<NutritionPage> {
                                   displayWeight,
                                   currentPetId,
                                   displayPetName,
-                                ),
-                        ],
+                                );
+
+                          return Align(
+                            alignment: Alignment.topCenter,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.topCenter,
+                              child: SizedBox(
+                                width: constraints.maxWidth,
+                                child: content,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),

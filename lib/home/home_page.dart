@@ -392,7 +392,7 @@ class _HomePageState extends State<HomePage> {
           Column(
             children: [
               _buildDatePicker(),
-              const SizedBox(height: 70),
+              const SizedBox(height: 40),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
@@ -400,103 +400,108 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       if (currentPet != null) ...[
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
                           child: SizedBox(
                             width: double.infinity,
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
-                                Text(
-                                  currentPet.name,
-                                  style: const TextStyle(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                                Transform.translate(
+                                  offset: const Offset(0, -6),
+                                  child: Text(
+                                    currentPet.name,
+                                    style: const TextStyle(
+                                      fontSize: 38,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.3,
+                                      color: Colors.white,
+                                      fontFamily: 'SinchonRhapsody',
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black26,
+                                          blurRadius: 6,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 Positioned(
-                                  right: 0,
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.4),
-                                      shape: BoxShape.circle,
+                                  top: -14,
+                                  right: -10,
+                                  child: PopupMenuButton<String>(
+                                    padding: EdgeInsets.zero,
+                                    icon: const Icon(
+                                      Icons.more_vert_rounded,
+                                      color: Color(0xFF44403B),
+                                      size: 24,
                                     ),
-                                    child: PopupMenuButton<String>(
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(
-                                        Icons.more_vert_rounded,
-                                        color: Color(0xFF44403B),
-                                        size: 24,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      onSelected: (value) {
-                                        if (value == 'edit') {
-                                          _openRegisterSheet(
-                                            existingPet: currentPet,
-                                          );
-                                        } else if (value == 'delete') {
-                                          _deletePet(
-                                            currentId!,
-                                            currentPet!.name,
-                                          );
-                                        }
-                                      },
-                                      itemBuilder: (BuildContext context) =>
-                                          <PopupMenuEntry<String>>[
-                                            const PopupMenuItem<String>(
-                                              value: 'edit',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.edit_rounded,
-                                                    size: 18,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        _openRegisterSheet(
+                                          existingPet: currentPet,
+                                        );
+                                      } else if (value == 'delete') {
+                                        _deletePet(
+                                          currentId!,
+                                          currentPet!.name,
+                                        );
+                                      }
+                                    },
+                                    itemBuilder: (BuildContext context) =>
+                                        <PopupMenuEntry<String>>[
+                                          const PopupMenuItem<String>(
+                                            value: 'edit',
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.edit_rounded,
+                                                  size: 18,
+                                                  color: Color(0xFF44403B),
+                                                ),
+                                                SizedBox(width: 10),
+                                                Text(
+                                                  '프로필 수정',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
                                                     color: Color(0xFF44403B),
                                                   ),
-                                                  SizedBox(width: 10),
-                                                  Text(
-                                                    '프로필 수정',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Color(0xFF44403B),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
                                             ),
-                                            const PopupMenuDivider(),
-                                            const PopupMenuItem<String>(
-                                              value: 'delete',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.delete_rounded,
-                                                    size: 18,
+                                          ),
+                                          const PopupMenuDivider(),
+                                          const PopupMenuItem<String>(
+                                            value: 'delete',
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.delete_rounded,
+                                                  size: 18,
+                                                  color: Colors.redAccent,
+                                                ),
+                                                SizedBox(width: 10),
+                                                Text(
+                                                  '프로필 삭제',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
                                                     color: Colors.redAccent,
                                                   ),
-                                                  SizedBox(width: 10),
-                                                  Text(
-                                                    '프로필 삭제',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.redAccent,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                    ),
+                                          ),
+                                        ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 24),
                         GestureDetector(
                           onTap: () =>
                               _openRegisterSheet(existingPet: currentPet),
@@ -504,14 +509,14 @@ class _HomePageState extends State<HomePage> {
                             clipBehavior: Clip.none,
                             children: [
                               Container(
-                                width: 180,
-                                height: 180,
+                                width: 200,
+                                height: 200,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: Colors.white,
                                   border: Border.all(
                                     color: Colors.white,
-                                    width: 4,
+                                    width: 6,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
@@ -546,9 +551,9 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 48),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -558,14 +563,28 @@ class _HomePageState extends State<HomePage> {
                                 Colors.white,
                                 const Color(0xFF92C6D1),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 24),
                               _buildMetricItem(
                                 "완료율",
-                                "$completionRate %",
+                                "",
                                 const Color(0xFFFFF59D),
                                 Colors.black87,
+                                valueLeading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: SizedBox(
+                                    width: 32,
+                                    height: 6,
+                                    child: LinearProgressIndicator(
+                                      value: completionRate / 100,
+                                      backgroundColor: Color(0xFFE6E6E6),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Color(0xFF3B3B3B),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 24),
                               _buildMetricItem(
                                 "병원 방문",
                                 healthDDay,
@@ -575,7 +594,7 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 100),
+                        const SizedBox(height: 70),
                       ] else ...[
                         const SizedBox(height: 60),
                         GestureDetector(
@@ -640,7 +659,7 @@ class _HomePageState extends State<HomePage> {
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(28),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -658,13 +677,26 @@ class _HomePageState extends State<HomePage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              "오늘의 체크리스트",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF44403B),
-                              ),
+                            Row(
+                              children: [
+                                const Text(
+                                  "오늘의 체크리스트",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF44403B),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "$completionRate%",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF6F6A65),
+                                  ),
+                                ),
+                              ],
                             ),
                             GestureDetector(
                               onTap: () {
@@ -849,7 +881,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   IconData _activityIcon(String level) {
-    if (level == '저조') return Icons.pets;
+    if (level == '저조') return Icons.bolt;
     if (level == '활발') return Icons.run_circle;
     return Icons.directions_walk;
   }
@@ -1043,14 +1075,15 @@ class _HomePageState extends State<HomePage> {
     String circleText,
     String value,
     Color circleColor,
-    Color textColor,
-  ) {
+    Color textColor, {
+    Widget? valueLeading,
+  }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           constraints: const BoxConstraints(minWidth: 78),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
           decoration: BoxDecoration(
             color: circleColor,
             borderRadius: BorderRadius.circular(18),
@@ -1059,20 +1092,31 @@ class _HomePageState extends State<HomePage> {
           child: Text(
             circleText,
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.1,
               color: textColor,
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: Colors.black,
-          ),
+                        const SizedBox(height: 12),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (valueLeading != null) ...[
+              valueLeading,
+              const SizedBox(width: 6),
+            ],
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+                color: Colors.black,
+              ),
+            ),
+          ],
         ),
       ],
     );

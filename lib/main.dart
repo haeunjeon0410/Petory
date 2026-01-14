@@ -138,7 +138,7 @@ class _MainPageState extends State<MainPage> {
               insetPadding: AppDialogStyle.insetPadding,
               child: Container(
                 width: double.infinity,
-                height: 420,
+                height: 400,
                 padding: AppDialogStyle.contentPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -884,7 +884,7 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
       insetPadding: AppDialogStyle.insetPadding,
       child: Container(
         width: double.infinity,
-        height: 450,
+        height: 400,
         padding: AppDialogStyle.contentPadding,
         child: Column(
           children: [

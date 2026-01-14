@@ -45,6 +45,7 @@ dependencies:
   geolocator: ^13.0.1
   geocoding: ^3.0.0
   shared_preferences: ^2.2.2
+  phosphor_flutter: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -85,6 +86,9 @@ flutter:
           weight: 800
         - asset: assets/fonts/Pretendard-Black.otf
           weight: 900
+    - family: SinchonRhapsody
+      fonts:
+        - asset: assets/fonts/SinchonRhapsody.ttf
 
 
   # To add assets to your application, add an assets section, like this:
