@@ -281,16 +281,27 @@ int calculateDailyFood(
       profile['isNeutered'] == true ||
       profile['isNeutered'].toString() == 'true';
   final double rer = 70 * pow(weight, 0.75).toDouble();
-  String level = activityLevel == '저활동' ? '저조' : activityLevel;
-  double factor = 1.6;
-  if (isNeutered) {
-    if (level == '저조') factor = 1.2;
-    if (level == '보통') factor = 1.6;
-    if (level == '활발') factor = 2.0;
+  final String petType = profile['type']?.toString() ?? '강아지';
+  final bool isCat = petType.contains('고양이');
+  final String level = activityLevel == '저활동' ? '저조' : activityLevel;
+
+  double factor;
+  if (isCat) {
+    if (level == '저조') {
+      factor = 1.0;
+    } else if (level == '활발') {
+      factor = 1.6;
+    } else {
+      factor = isNeutered ? 1.2 : 1.4;
+    }
   } else {
-    if (level == '저조') factor = 1.4;
-    if (level == '보통') factor = 1.8;
-    if (level == '활발') factor = 2.5;
+    if (level == '저조') {
+      factor = 1.2;
+    } else if (level == '활발') {
+      factor = 2.5;
+    } else {
+      factor = isNeutered ? 1.6 : 1.8;
+    }
   }
   return (rer * factor).round();
 }

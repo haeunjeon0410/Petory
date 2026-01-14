@@ -509,7 +509,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                               Positioned(
-                                right: -6,
+                                right: -18,
                                 top: 18,
                                 child: _buildActivityBubble(
                                   record.petProfiles[currentId]?['activityLevel']
@@ -529,11 +529,11 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 28),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               _buildMetricItem(
                                 "권장 식사량",
@@ -541,12 +541,14 @@ class _HomePageState extends State<HomePage> {
                                 Colors.white,
                                 const Color(0xFF92C6D1),
                               ),
+                              const SizedBox(width: 12),
                               _buildMetricItem(
                                 "완료율",
                                 "$completionRate %",
                                 const Color(0xFFFFF59D),
                                 Colors.black87,
                               ),
+                              const SizedBox(width: 12),
                               _buildMetricItem(
                                 "건강검진",
                                 healthDDay,
@@ -830,8 +832,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   IconData _activityIcon(String level) {
-    if (level == '저조') return Icons.bedtime_outlined;
-    if (level == '활발') return Icons.flash_on;
+    if (level == '저조') return Icons.pets;
+    if (level == '활발') return Icons.run_circle;
     return Icons.directions_walk;
   }
 
@@ -848,10 +850,10 @@ class _HomePageState extends State<HomePage> {
             clipBehavior: Clip.none,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: bubbleColor,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.08),
@@ -862,16 +864,16 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: Icon(
                   _activityIcon(level),
-                  size: 16,
+                  size: 22,
                   color: const Color(0xFF44403B),
                 ),
               ),
               Positioned(
-                left: -4,
-                top: 10,
+                left: -6,
+                top: 12,
                 child: Transform.rotate(
                   angle: math.pi / 4,
-                  child: Container(width: 7, height: 7, color: bubbleColor),
+                  child: Container(width: 10, height: 10, color: bubbleColor),
                 ),
               ),
             ],
@@ -897,8 +899,8 @@ class _HomePageState extends State<HomePage> {
       ancestor: overlay,
     );
 
-    const double barWidth = 150;
-    const double barHeight = 40;
+    const double barWidth = 190;
+    const double barHeight = 42;
     final double left = offset.dx + (size.width / 2) - (barWidth / 2);
     final double top = offset.dy - barHeight - 10;
 
@@ -920,25 +922,31 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFF44403B).withOpacity(0.1)
+                      ? const Color(0xFF44403B).withOpacity(0.14)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
-                child: Row(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(icon, size: 14, color: const Color(0xFF44403B)),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        label,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF44403B),
-                        ),
+                    Icon(
+                      icon,
+                      size: 15,
+                      color: isSelected
+                          ? const Color(0xFF2F2A26)
+                          : const Color(0xFFB0B0B0),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? const Color(0xFF2F2A26)
+                            : const Color(0xFFB0B0B0),
                       ),
                     ),
                   ],
@@ -959,17 +967,12 @@ class _HomePageState extends State<HomePage> {
 
         return Stack(
           children: [
-
             Positioned(
               left: clampedLeft + (barWidth / 2) - 4,
               top: clampedTop + barHeight - 2,
               child: Transform.rotate(
                 angle: math.pi / 4,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  color: Colors.white,
-                ),
+                child: Container(width: 8, height: 8, color: Colors.white),
               ),
             ),
             Positioned(
@@ -980,24 +983,25 @@ class _HomePageState extends State<HomePage> {
                 child: Container(
                   width: barWidth,
                   height: barHeight,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE7E5E4)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 6),
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      buildOption('저조', Icons.bedtime_outlined),
+                      buildOption('저조', Icons.pets),
                       buildOption('보통', Icons.directions_walk),
-                      buildOption('활발', Icons.flash_on),
+                      buildOption('활발', Icons.run_circle),
                     ],
                   ),
                 ),
@@ -1028,27 +1032,27 @@ class _HomePageState extends State<HomePage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          constraints: const BoxConstraints(minWidth: 88),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          constraints: const BoxConstraints(minWidth: 78),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
           decoration: BoxDecoration(
             color: circleColor,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(18),
           ),
           alignment: Alignment.center,
           child: Text(
             circleText,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w500,
             color: Colors.black,
           ),
