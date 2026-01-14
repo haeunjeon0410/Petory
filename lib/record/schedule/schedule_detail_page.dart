@@ -80,7 +80,7 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                 ),
                 const Spacer(),
 
-                // [하은님 요청] 알람 아이콘 토글 (작대기 아이콘 적용)
+                // 알람 아이콘 토글 (작대기 아이콘 적용)
                 IconButton(
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),

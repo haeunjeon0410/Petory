@@ -1,23 +1,52 @@
 import 'package:flutter/material.dart';
 import '../models/pet_model.dart';
 
-class PetProfileCard extends StatelessWidget {
+class PetProfileCard extends StatefulWidget {
   final Pet pet;
-  final VoidCallback onEdit; // [추가] 수정 콜백
-  final VoidCallback onDelete; // [추가] 삭제 콜백
+  final VoidCallback onEdit; // [??] ?? ??
+  final VoidCallback onDelete; // [??] ?? ??
+  final ValueChanged<String>? onActivityChanged;
 
   const PetProfileCard({
     super.key,
     required this.pet,
-    required this.onEdit, // [추가]
-    required this.onDelete, // [추가]
+    required this.onEdit, // [??]
+    required this.onDelete, // [??]
+    this.onActivityChanged,
   });
 
   @override
+  State<PetProfileCard> createState() => _PetProfileCardState();
+}
+
+class _PetProfileCardState extends State<PetProfileCard> {
+  late String _activityLevel;
+
+  @override
+  void initState() {
+    super.initState();
+    _activityLevel = widget.pet.activityLevel;
+  }
+
+  @override
+  void didUpdateWidget(covariant PetProfileCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pet.activityLevel != widget.pet.activityLevel) {
+      _activityLevel = widget.pet.activityLevel;
+    }
+  }
+
+  IconData _activityIcon(String level) {
+    if (level == '??') return Icons.nightlight_round;
+    if (level == '??') return Icons.bolt;
+    return Icons.pets;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    String petTypeEmoji = pet.type == "강아지"
-        ? "🐶"
-        : (pet.type == "고양이" ? "🐱" : "🐾");
+    String petTypeEmoji = widget.pet.type == "???"
+        ? "??"
+        : (widget.pet.type == "???" ? "??" : "??");
 
     return Container(
       width: double.infinity,
@@ -35,9 +64,9 @@ class PetProfileCard extends StatelessWidget {
         ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // [수정] 위쪽 정렬
+        crossAxisAlignment: CrossAxisAlignment.start, // [??] ?? ??
         children: [
-          // 1. 프로필 이미지
+          // 1. ??? ???
           Container(
             width: 76,
             height: 76,
@@ -52,7 +81,7 @@ class PetProfileCard extends StatelessWidget {
           ),
           const SizedBox(width: 18),
 
-          // 2. 텍스트 정보 (Expanded로 남은 공간 차지)
+          // 2. ??? ?? (Expanded? ?? ?? ??)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +89,7 @@ class PetProfileCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      pet.name,
+                      widget.pet.name,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -69,19 +98,74 @@ class PetProfileCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(petTypeEmoji, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    PopupMenuButton<String>(
+                      tooltip: '???',
+                      onSelected: (value) {
+                        setState(() => _activityLevel = value);
+                        widget.pet.activityLevel = value;
+                        widget.onActivityChanged?.call(value);
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem<String>(
+                          value: '??',
+                          child: Row(
+                            children: [
+                              Icon(Icons.nightlight_round, size: 18),
+                              SizedBox(width: 8),
+                              Text('??'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: '??',
+                          child: Row(
+                            children: [
+                              Icon(Icons.pets, size: 18),
+                              SizedBox(width: 8),
+                              Text('??'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: '??',
+                          child: Row(
+                            children: [
+                              Icon(Icons.bolt, size: 18),
+                              SizedBox(width: 8),
+                              Text('??'),
+                            ],
+                          ),
+                        ),
+                      ],
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE7E5E4),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          _activityIcon(_activityLevel),
+                          size: 16,
+                          color: const Color(0xFF44403B),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Text(
-                      "${pet.species} • ${pet.age}살",
+                      "${widget.pet.species} ? ${widget.pet.age}?",
                       style: const TextStyle(color: Colors.black, fontSize: 13),
                     ),
                     const SizedBox(width: 6),
-                    if (pet.gender == 'male')
+                    if (widget.pet.gender == 'male')
                       const Icon(Icons.male, color: Colors.blue, size: 16)
-                    else if (pet.gender == 'female')
+                    else if (widget.pet.gender == 'female')
                       const Icon(Icons.female, color: Colors.red, size: 16),
                   ],
                 ),
@@ -90,9 +174,8 @@ class PetProfileCard extends StatelessWidget {
                   children: [
                     Builder(
                       builder: (context) {
-                        // 문자열을 숫자로 변환 (실패 시 0.0)
-                        double hVal = double.tryParse(pet.height) ?? 0.0;
-                        // 소수점 1자리 고정
+                        double hVal =
+                            double.tryParse(widget.pet.height) ?? 0.0;
                         String hText = hVal.toStringAsFixed(1);
                         return _buildTag("$hText cm", Colors.blue);
                       },
@@ -100,9 +183,8 @@ class PetProfileCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Builder(
                       builder: (context) {
-                        // 문자열을 숫자로 변환
-                        double wVal = double.tryParse(pet.weight) ?? 0.0;
-                        // 소수점 2자리 고정
+                        double wVal =
+                            double.tryParse(widget.pet.weight) ?? 0.0;
                         String wText = wVal.toStringAsFixed(2);
                         return _buildTag("$wText kg", Colors.red);
                       },
@@ -113,7 +195,7 @@ class PetProfileCard extends StatelessWidget {
             ),
           ),
 
-          // [핵심 추가] 3. 점 세 개 메뉴 버튼 (수정/삭제)
+          // [?? ??] 3. ?? ?? ?? ?? (??/??)
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.grey),
             color: Colors.white,
@@ -122,8 +204,8 @@ class PetProfileCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             onSelected: (String value) {
-              if (value == 'edit') onEdit();
-              if (value == 'delete') onDelete();
+              if (value == 'edit') widget.onEdit();
+              if (value == 'delete') widget.onDelete();
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               const PopupMenuItem<String>(
@@ -132,7 +214,7 @@ class PetProfileCard extends StatelessWidget {
                   children: [
                     Icon(Icons.edit, color: Colors.blue, size: 20),
                     SizedBox(width: 10),
-                    Text('수정', style: TextStyle(fontSize: 14)),
+                    Text('??', style: TextStyle(fontSize: 14)),
                   ],
                 ),
               ),
@@ -142,7 +224,7 @@ class PetProfileCard extends StatelessWidget {
                   children: [
                     Icon(Icons.delete, color: Colors.red, size: 20),
                     SizedBox(width: 10),
-                    Text('삭제', style: TextStyle(fontSize: 14)),
+                    Text('??', style: TextStyle(fontSize: 14)),
                   ],
                 ),
               ),
@@ -153,23 +235,22 @@ class PetProfileCard extends StatelessWidget {
     );
   }
 
-  // (이미지 처리 함수와 _buildTag 함수는 기존과 동일하게 유지)
   DecorationImage? _getProfileImage() {
-    /* ... 이전 코드와 동일 ... */
-    if (pet.imageFile != null) {
+    if (widget.pet.imageFile != null) {
       return DecorationImage(
-        image: FileImage(pet.imageFile!),
+        image: FileImage(widget.pet.imageFile!),
         fit: BoxFit.cover,
       );
-    } else if (pet.imageAsset != null && pet.imageAsset!.isNotEmpty) {
-      if (pet.imageAsset!.startsWith('http')) {
+    } else if (widget.pet.imageAsset != null &&
+        widget.pet.imageAsset!.isNotEmpty) {
+      if (widget.pet.imageAsset!.startsWith('http')) {
         return DecorationImage(
-          image: NetworkImage(pet.imageAsset!),
+          image: NetworkImage(widget.pet.imageAsset!),
           fit: BoxFit.cover,
         );
       }
       return DecorationImage(
-        image: AssetImage(pet.imageAsset!),
+        image: AssetImage(widget.pet.imageAsset!),
         fit: BoxFit.cover,
       );
     }
@@ -177,7 +258,6 @@ class PetProfileCard extends StatelessWidget {
   }
 
   Widget _buildTag(String text, Color bgColor) {
-    /* ... 이전 코드와 동일 ... */
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(

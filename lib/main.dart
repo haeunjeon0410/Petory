@@ -34,6 +34,9 @@ class PetoryApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Petory',
+      theme: ThemeData(
+        fontFamily: 'Pretendard',
+      ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

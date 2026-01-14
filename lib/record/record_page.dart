@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'record_data.dart' as record;
-import 'photo_grid_section.dart';
 import 'calendar_section.dart';
 
 class RecordPage extends StatefulWidget {
@@ -41,6 +40,23 @@ class _RecordPageState extends State<RecordPage> {
 
   bool _isSameDate(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Widget _buildHeader(String petName) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          '$petName의 기록',
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
 
   // [Widget] 누트리션 페이지와 "완전히 똑같은" 날짜 선택 바
   Widget _buildDatePicker() {
@@ -157,41 +173,37 @@ class _RecordPageState extends State<RecordPage> {
       currentPetId = record.myPetIds[0];
       record.selectedPetId = currentPetId;
     }
+    final currentProfile = record.petProfiles[currentPetId] ?? {};
+    final displayPetName = currentProfile['name']?.toString() ?? '이름 없음';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2A783), // 하은이가 픽한 살구색 배경
+      backgroundColor: const Color(0xFFF2A783),
       body: Column(
         children: [
           _buildDatePicker(), // 1. 누트리션 페이지와 동일하게 최상단 고정!
           Expanded(
             child: SingleChildScrollView(
               // 2. 누트리션 페이지와 동일한 패딩 적용 (20, 15, 20, 120)
-              padding: const EdgeInsets.fromLTRB(20, 15, 20, 120),
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 120),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _buildHeader(displayPetName),
                   // 3. 캘린더 섹션 (하얀 박스 느낌을 줄인 캘린더)
-                  CalendarSection(
-                    selectedPetName: currentPetId,
-                    onRefresh: widget.onRefresh,
-                    onDayChanged: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // 4. 포토 그리드 섹션
-                  PhotoGridSection(
-                    selectedPetName: currentPetId,
-                    focusedDay: _focusedDay,
-                    selectedDay: _selectedDay,
-                    onRefresh: () {
-                      setState(() {});
-                      widget.onRefresh?.call();
-                    },
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Center(
+                      child: CalendarSection(
+                        selectedPetName: currentPetId,
+                        onRefresh: widget.onRefresh,
+                        onDayChanged: (selectedDay, focusedDay) {
+                          setState(() {
+                            _selectedDay = selectedDay;
+                            _focusedDay = focusedDay;
+                          });
+                        },
+                      ),
+                    ),
                   ),
                 ],
               ),

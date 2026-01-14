@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../record/record_data.dart' as record;
 
@@ -339,12 +340,16 @@ class _HomePageState extends State<HomePage> {
           weight: pData['weight'] ?? '',
           gender: pData['gender'] ?? 'male',
           isNeutered: pData['isNeutered'] ?? false,
+          activityLevel: pData['activityLevel'] ?? '보통',
           imageFile: imgFile,
           imageAsset: imgAsset,
         );
 
         try {
-          foodAmount = record.calculateDailyFood(pData, activityLevel: '보통');
+          foodAmount = record.calculateDailyFood(
+            pData,
+            activityLevel: pData['activityLevel'] ?? '보통',
+          );
         } catch (e) {
           foodAmount = 0;
         }
@@ -426,7 +431,7 @@ class _HomePageState extends State<HomePage> {
                                         size: 24,
                                       ),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
+                                        borderRadius: BorderRadius.circular(14),
                                       ),
                                       onSelected: (value) {
                                         if (value == 'edit') {
@@ -495,31 +500,57 @@ class _HomePageState extends State<HomePage> {
                         GestureDetector(
                           onTap: () =>
                               _openRegisterSheet(existingPet: currentPet),
-                          child: Container(
-                            width: 180,
-                            height: 180,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                              border: Border.all(color: Colors.white, width: 4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  spreadRadius: 2,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 180,
+                                height: 180,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 4,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: _buildProfileImage(currentPet),
-                            ),
+                                child: ClipOval(
+                                  child: _buildProfileImage(currentPet),
+                                ),
+                              ),
+                              Positioned(
+                                right: -18,
+                                top: 18,
+                                child: _buildActivityBubble(
+                                  record.petProfiles[currentId]?['activityLevel']
+                                          ?.toString() ??
+                                      '보통',
+                                  onSelected: (level) {
+                                    setState(() {
+                                      record.petProfiles[currentId!] ??= {};
+                                      record.petProfiles[currentId!]!['activityLevel'] =
+                                          level;
+                                    });
+                                    record.saveToStorage();
+                                    widget.onRefresh?.call();
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 60),
+                        const SizedBox(height: 28),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               _buildMetricItem(
                                 "권장 식사량",
@@ -527,12 +558,14 @@ class _HomePageState extends State<HomePage> {
                                 Colors.white,
                                 const Color(0xFF92C6D1),
                               ),
+                              const SizedBox(width: 12),
                               _buildMetricItem(
                                 "완료율",
                                 "$completionRate %",
                                 const Color(0xFFFFF59D),
                                 Colors.black87,
                               ),
+                              const SizedBox(width: 12),
                               _buildMetricItem(
                                 "병원 방문",
                                 healthDDay,
@@ -651,7 +684,7 @@ class _HomePageState extends State<HomePage> {
                                 height: 32,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF44403B),
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: const Icon(
                                   Icons.add,
@@ -815,6 +848,188 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  IconData _activityIcon(String level) {
+    if (level == '저조') return Icons.pets;
+    if (level == '활발') return Icons.run_circle;
+    return Icons.directions_walk;
+  }
+
+  Widget _buildActivityBubble(
+    String level, {
+    required ValueChanged<String> onSelected,
+  }) {
+    const Color bubbleColor = Colors.white;
+    return Builder(
+      builder: (context) {
+        return GestureDetector(
+          onTap: () => _showActivityBar(context, level, onSelected),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: bubbleColor,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  _activityIcon(level),
+                  size: 22,
+                  color: const Color(0xFF44403B),
+                ),
+              ),
+              Positioned(
+                left: -6,
+                top: 12,
+                child: Transform.rotate(
+                  angle: math.pi / 4,
+                  child: Container(width: 10, height: 10, color: bubbleColor),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showActivityBar(
+    BuildContext context,
+    String level,
+    ValueChanged<String> onSelected,
+  ) {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (renderBox == null || overlay == null) return;
+
+    final Size size = renderBox.size;
+    final Offset offset = renderBox.localToGlobal(
+      Offset.zero,
+      ancestor: overlay,
+    );
+
+    const double barWidth = 190;
+    const double barHeight = 42;
+    final double left = offset.dx + (size.width / 2) - (barWidth / 2);
+    final double top = offset.dy - barHeight - 10;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'activity',
+      barrierColor: Colors.transparent,
+      pageBuilder: (context, _, __) {
+        Widget buildOption(String label, IconData icon) {
+          final bool isSelected = level == label;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                onSelected(label);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF44403B).withOpacity(0.14)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 15,
+                      color: isSelected
+                          ? const Color(0xFF2F2A26)
+                          : const Color(0xFFB0B0B0),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? const Color(0xFF2F2A26)
+                            : const Color(0xFFB0B0B0),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final double clampedLeft = left.clamp(
+          12.0,
+          overlay.size.width - barWidth - 12.0,
+        );
+        final double clampedTop = top.clamp(
+          12.0,
+          overlay.size.height - barHeight - 12.0,
+        );
+
+        return Stack(
+          children: [
+            Positioned(
+              left: clampedLeft + (barWidth / 2) - 4,
+              top: clampedTop + barHeight - 2,
+              child: Transform.rotate(
+                angle: math.pi / 4,
+                child: Container(width: 8, height: 8, color: Colors.white),
+              ),
+            ),
+            Positioned(
+              left: clampedLeft,
+              top: clampedTop,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: barWidth,
+                  height: barHeight,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE7E5E4)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      buildOption('저조', Icons.pets),
+                      buildOption('보통', Icons.directions_walk),
+                      buildOption('활발', Icons.run_circle),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildProfileImage(Pet pet) {
     if (pet.imageFile != null) {
       return Image.file(pet.imageFile!, fit: BoxFit.cover);
@@ -834,27 +1049,27 @@ class _HomePageState extends State<HomePage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          constraints: const BoxConstraints(minWidth: 88),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          constraints: const BoxConstraints(minWidth: 78),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
           decoration: BoxDecoration(
             color: circleColor,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(18),
           ),
           alignment: Alignment.center,
           child: Text(
             circleText,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w500,
             color: Colors.black,
           ),
