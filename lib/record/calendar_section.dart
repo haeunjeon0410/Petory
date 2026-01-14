@@ -369,17 +369,6 @@ class _CalendarSectionState extends State<CalendarSection> {
     );
   }
 
-  void _showAlbumDialog() {
-    if (widget.selectedPetName.isEmpty) return;
-    showDialog(
-      context: context,
-      builder: (_) => _MonthlyAlbumDialog(
-        petId: widget.selectedPetName,
-        initialMonth: _focusedDay,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -399,17 +388,13 @@ class _CalendarSectionState extends State<CalendarSection> {
         builder: (context, constraints) {
           const double headerHeight = 36;
           const double daysOfWeekHeight = 32;
-          final double availableHeight =
-              constraints.maxHeight - headerHeight;
-          final double rowHeight =
-              ((availableHeight - daysOfWeekHeight) / 6).clamp(50.0, 70.0);
+          final double availableHeight = constraints.maxHeight - headerHeight;
+          final double rowHeight = ((availableHeight - daysOfWeekHeight) / 6)
+              .clamp(50.0, 70.0);
 
           return Column(
             children: [
-              SizedBox(
-                height: headerHeight,
-                child: _buildHeader(),
-              ),
+              SizedBox(height: headerHeight, child: _buildHeader()),
               TableCalendar(
                 locale: 'ko_KR',
                 firstDay: DateTime.utc(2020, 1, 1),
@@ -442,8 +427,10 @@ class _CalendarSectionState extends State<CalendarSection> {
                   todayBuilder: (context, day, _) => _buildDayCell(day),
                   selectedBuilder: (context, day, _) =>
                       _buildDayCell(day, isSelected: true),
-                  outsideBuilder: (context, day, _) =>
-                      _buildDayCell(day, textColor: Colors.grey.withOpacity(0.5)),
+                  outsideBuilder: (context, day, _) => _buildDayCell(
+                    day,
+                    textColor: Colors.grey.withOpacity(0.5),
+                  ),
                 ),
               ),
             ],
@@ -487,8 +474,8 @@ class _CalendarSectionState extends State<CalendarSection> {
           padding: iconPadding,
           constraints: iconConstraints,
           onPressed: () => setState(
-            () => _focusedDay =
-                DateTime(_focusedDay.year, _focusedDay.month + 1),
+            () =>
+                _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1),
           ),
         ),
       ],
@@ -500,10 +487,7 @@ class _MonthlyAlbumDialog extends StatefulWidget {
   final String petId;
   final DateTime initialMonth;
 
-  const _MonthlyAlbumDialog({
-    required this.petId,
-    required this.initialMonth,
-  });
+  const _MonthlyAlbumDialog({required this.petId, required this.initialMonth});
 
   @override
   State<_MonthlyAlbumDialog> createState() => _MonthlyAlbumDialogState();
@@ -515,7 +499,10 @@ class _MonthlyAlbumDialogState extends State<_MonthlyAlbumDialog> {
   @override
   void initState() {
     super.initState();
-    _currentMonth = DateTime(widget.initialMonth.year, widget.initialMonth.month);
+    _currentMonth = DateTime(
+      widget.initialMonth.year,
+      widget.initialMonth.month,
+    );
   }
 
   List<MapEntry<DateTime, String>> _getMonthPhotos() {
@@ -524,7 +511,8 @@ class _MonthlyAlbumDialogState extends State<_MonthlyAlbumDialog> {
     if (petPhotos == null) return items;
 
     petPhotos.forEach((date, paths) {
-      if (date.year == _currentMonth.year && date.month == _currentMonth.month) {
+      if (date.year == _currentMonth.year &&
+          date.month == _currentMonth.month) {
         for (final path in paths) {
           items.add(MapEntry(date, path));
         }
@@ -603,12 +591,17 @@ class _MonthlyAlbumDialogState extends State<_MonthlyAlbumDialog> {
             Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left, color: Color(0xFF44403B)),
+                  icon: const Icon(
+                    Icons.chevron_left,
+                    color: Color(0xFF44403B),
+                  ),
                   padding: iconPadding,
                   constraints: iconConstraints,
                   onPressed: () => setState(
-                    () => _currentMonth =
-                        DateTime(_currentMonth.year, _currentMonth.month - 1),
+                    () => _currentMonth = DateTime(
+                      _currentMonth.year,
+                      _currentMonth.month - 1,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -624,13 +617,17 @@ class _MonthlyAlbumDialogState extends State<_MonthlyAlbumDialog> {
                   ),
                 ),
                 IconButton(
-                  icon:
-                      const Icon(Icons.chevron_right, color: Color(0xFF44403B)),
+                  icon: const Icon(
+                    Icons.chevron_right,
+                    color: Color(0xFF44403B),
+                  ),
                   padding: iconPadding,
                   constraints: iconConstraints,
                   onPressed: () => setState(
-                    () => _currentMonth =
-                        DateTime(_currentMonth.year, _currentMonth.month + 1),
+                    () => _currentMonth = DateTime(
+                      _currentMonth.year,
+                      _currentMonth.month + 1,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -663,11 +660,11 @@ class _MonthlyAlbumDialogState extends State<_MonthlyAlbumDialog> {
                     itemCount: photos.length,
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 18,
-                      crossAxisSpacing: 18,
-                      childAspectRatio: 1.0,
-                    ),
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 18,
+                          crossAxisSpacing: 18,
+                          childAspectRatio: 1.0,
+                        ),
                     itemBuilder: (context, index) {
                       final entry = photos[index];
                       return ClipRRect(
@@ -679,13 +676,13 @@ class _MonthlyAlbumDialogState extends State<_MonthlyAlbumDialog> {
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
                                 Container(
-                              color: const Color(0xFFE7E5E4),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.error_outline,
-                                color: Colors.redAccent,
-                              ),
-                            ),
+                                  color: const Color(0xFFE7E5E4),
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
                           ),
                         ),
                       );

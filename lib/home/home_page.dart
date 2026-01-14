@@ -541,7 +541,7 @@ class _HomePageState extends State<HomePage> {
                                   onSelected: (level) {
                                     setState(() {
                                       record.petProfiles[currentId!] ??= {};
-                                      record.petProfiles[currentId!]!['activityLevel'] =
+                                      record.petProfiles[currentId]!['activityLevel'] =
                                           level;
                                     });
                                     record.saveToStorage();

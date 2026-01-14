@@ -96,14 +96,6 @@ class _AiChatPageState extends State<AiChatPage> {
     return record.petProfiles[petId]!['name']?.toString() ?? "반려동물";
   }
 
-  void _changePetProfile(String petId) {
-    setState(() {
-      record.selectedPetId = petId;
-      _resetChat();
-      _initGemini();
-    });
-  }
-
   void _initGemini() {
     const String apiKey = String.fromEnvironment('GEMINI_API_KEY');
 
