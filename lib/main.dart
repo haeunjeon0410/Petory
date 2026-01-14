@@ -898,13 +898,13 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                 const Row(
                   children: [
                     Icon(
-                      CupertinoIcons.phone_circle_fill,
+                      CupertinoIcons.plus_square,
                       color: Colors.redAccent,
                       size: 24,
                     ),
                     SizedBox(width: 8),
                     Text(
-                      '비상 연락처',
+                      '주변 동물병원',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -923,7 +923,7 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
 
             // 리스트
             Expanded(

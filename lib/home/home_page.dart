@@ -393,7 +393,7 @@ class _HomePageState extends State<HomePage> {
           Column(
             children: [
               _buildDatePicker(),
-              const SizedBox(height: 56),
+              const SizedBox(height: 48),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
@@ -502,7 +502,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 12),
                         GestureDetector(
                           onTap: () =>
                               _openRegisterSheet(existingPet: currentPet),
@@ -552,7 +552,7 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 48),
+                        const SizedBox(height: 36),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Row(
@@ -636,8 +636,8 @@ class _HomePageState extends State<HomePage> {
 
           // 2. 전경 레이어: 체크리스트 (DraggableScrollableSheet)
           DraggableScrollableSheet(
-            initialChildSize: 0.20,
-            minChildSize: 0.20,
+            initialChildSize: 0.18,
+            minChildSize: 0.18,
             maxChildSize: 0.92,
             snap: true,
             builder: (BuildContext context, ScrollController scrollController) {
@@ -660,7 +660,7 @@ class _HomePageState extends State<HomePage> {
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: Padding(
-                    padding: const EdgeInsets.all(28),
+                    padding: const EdgeInsets.fromLTRB(32, 16, 32, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -668,7 +668,7 @@ class _HomePageState extends State<HomePage> {
                           child: Container(
                             width: 40,
                             height: 4,
-                            margin: const EdgeInsets.only(bottom: 20),
+                            margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
                               color: Colors.grey.shade300,
                               borderRadius: BorderRadius.circular(2),
@@ -914,7 +914,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: Icon(
                   _activityIcon(level),
-                  size: 22,
+                  size: 28,
                   color: const Color(0xFF44403B),
                 ),
               ),
