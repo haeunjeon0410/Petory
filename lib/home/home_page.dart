@@ -62,30 +62,45 @@ class _HomePageState extends State<HomePage> {
   // [수정] 건강검진/예방접종 D-Day 계산 로직 추가
   // ------------------------------------------------------------------------
   String _calculateHealthDDay(String petId) {
-    if (petId.isEmpty) return "--";
+    if (petId.isEmpty) return "-";
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // record_data.dart의 petSchedules는 Map<String, Map<DateTime, List<Schedule>>> 구조입니다.
     final petDateMap = record.petSchedules[petId];
-
-    if (petDateMap == null || petDateMap.isEmpty) return "--";
+    if (petDateMap == null || petDateMap.isEmpty) return "-";
 
     List<DateTime> healthDates = [];
 
-    // 모든 날짜의 일정을 순회하며 키워드를 찾습니다.
+    // 감지할 키워드 리스트 (병원 관련 단어들)
+    final keywords = [
+      "건강검진",
+      "예방접종",
+      "병원",
+      "진료",
+      "수술",
+      "중성화",
+      "심장사상충",
+      "구충",
+      "약",
+    ];
+
     for (final List<record.Schedule> schedulesList in petDateMap.values) {
       for (final record.Schedule schedule in schedulesList) {
-        final String title = schedule.title;
+        // [핵심] 제목에서 모든 띄어쓰기 제거
+        final String cleanTitle = schedule.title.replaceAll(' ', '');
         final DateTime date = schedule.date;
 
-        if (title.contains("건강검진") || title.contains("예방접종")) {
+        // 키워드 중 하나라도 포함되어 있는지 확인
+        bool hasKeyword = keywords.any((k) => cleanTitle.contains(k));
+
+        if (hasKeyword) {
           final DateTime normalizedDate = DateTime(
             date.year,
             date.month,
             date.day,
           );
+          // 오늘을 포함한 미래 일정만 추가
           if (!normalizedDate.isBefore(today)) {
             healthDates.add(normalizedDate);
           }
@@ -93,7 +108,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    if (healthDates.isEmpty) return "--";
+    if (healthDates.isEmpty) return "-";
 
     healthDates.sort();
     final DateTime targetDate = healthDates.first;
@@ -252,6 +267,7 @@ class _HomePageState extends State<HomePage> {
           "time": result.time,
           "icon": result.icon,
           "isDone": result.isDone,
+          "memo": result.memo,
         };
         record.petChecklists.putIfAbsent(petId, () => {});
         record.petChecklists[petId]!.putIfAbsent(dateKey, () => []);
@@ -344,6 +360,7 @@ class _HomePageState extends State<HomePage> {
                 time: t['time'],
                 icon: t['icon'].toString(),
                 isDone: t['isDone'],
+                memo: t['memo']?.toString() ?? '',
               ),
             )
             .toList();
@@ -370,7 +387,7 @@ class _HomePageState extends State<HomePage> {
           Column(
             children: [
               _buildDatePicker(),
-              const SizedBox(height: 45),
+              const SizedBox(height: 70),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
@@ -474,7 +491,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 40),
                         GestureDetector(
                           onTap: () =>
                               _openRegisterSheet(existingPet: currentPet),
@@ -498,7 +515,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 60),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
@@ -517,7 +534,7 @@ class _HomePageState extends State<HomePage> {
                                 Colors.black87,
                               ),
                               _buildMetricItem(
-                                "건강검진",
+                                "병원 방문",
                                 healthDDay,
                                 const Color(0xFF2D4464),
                                 Colors.white,
@@ -566,8 +583,8 @@ class _HomePageState extends State<HomePage> {
 
           // 2. 전경 레이어: 체크리스트 (DraggableScrollableSheet)
           DraggableScrollableSheet(
-            initialChildSize: 0.33,
-            minChildSize: 0.33,
+            initialChildSize: 0.20,
+            minChildSize: 0.20,
             maxChildSize: 0.92,
             snap: true,
             builder: (BuildContext context, ScrollController scrollController) {

@@ -14,7 +14,7 @@ class TaskDetailDialog extends StatelessWidget {
       insetPadding: AppDialogStyle.insetPadding,
       child: Container(
         decoration: BoxDecoration(
-          color: AppDialogStyle.background,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(AppDialogStyle.radius),
         ),
         child: Column(

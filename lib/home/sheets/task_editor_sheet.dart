@@ -29,10 +29,10 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
 
     if (widget.existingTask != null) {
       final task = widget.existingTask!;
-      _titleController.text = task.title;
-      _timeController.text = task.time;
-      _memoController.text = task.memo ?? "";
-      _selectedEmoji = task.icon ?? "🐾";
+      _titleController.text = widget.existingTask!.title;
+      _timeController.text = widget.existingTask!.time;
+      _memoController.text = widget.existingTask!.memo ?? "";
+      _selectedEmoji = widget.existingTask!.icon ?? "🐾";
     }
   }
 
@@ -188,7 +188,7 @@ class _TaskEditorSheetState extends State<TaskEditorSheet> {
                           _buildLabel("메모"),
                           CommonTextField(
                             controller: _memoController,
-                            hint: "추가 메모 (선택)",
+                            hint: "메모 (선택)",
                             maxLines: 4,
                             onTap: () =>
                                 setState(() => _isEmojiPickerVisible = false),

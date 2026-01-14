@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'nutrition_dialogs.dart';
 
 // ==========================================
-// 1. 사료 계산기 카드
+// 1. 사료 계산기 카드 (변경 없음)
 // ==========================================
 class FoodCalculatorCard extends StatelessWidget {
   final Map<String, dynamic> profile;
@@ -189,7 +189,7 @@ class FoodCalculatorCard extends StatelessWidget {
 }
 
 // ==========================================
-// 2. 체중 추이 그래프 카드
+// 2. 체중 추이 그래프 카드 (Y축 등간격 수정 완료)
 // ==========================================
 class WeightTrendCard extends StatefulWidget {
   final String petName;
@@ -209,181 +209,252 @@ class WeightTrendCard extends StatefulWidget {
   State<WeightTrendCard> createState() => _WeightTrendCardState();
 }
 
-class _ChartData {
-  final int xIndex;
-  final double weight;
-  final String tooltipDate;
-
-  _ChartData(this.xIndex, this.weight, this.tooltipDate);
-}
-
 class _WeightTrendCardState extends State<WeightTrendCard> {
   String _selectedPeriod = "일간";
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollToEnd();
+  }
+
+  void _onPeriodChanged(String period) {
+    setState(() {
+      _selectedPeriod = period;
+    });
+    _scrollToEnd();
+  }
+
+  void _scrollToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
 
   @override
   Widget build(BuildContext context) {
-    List<_ChartData> chartDataList = _prepareChartData();
+    // 1. 데이터 준비
+    List<Map<String, dynamic>> fullData = List.from(widget.history);
+    DateTime today = _normalizeDate(DateTime.now());
 
-    double diff = 0;
-    List<Map<String, dynamic>> sortedHistory = List.from(widget.history);
-    sortedHistory.sort((a, b) => (a['date'] as DateTime).compareTo(b['date']));
+    bool hasTodayData = fullData.any((element) {
+      DateTime d = element['date'];
+      return _normalizeDate(d).isAtSameMomentAs(today);
+    });
 
-    Map<String, Map<String, dynamic>> distinctMap = {};
-    for (var h in sortedHistory) {
-      DateTime d = h['date'];
-      distinctMap["${d.year}-${d.month}-${d.day}"] = h;
-    }
-    List<Map<String, dynamic>> fullHistory = distinctMap.values.toList();
-
-    if (fullHistory.length >= 2) {
-      diff =
-          fullHistory.last['weight'] -
-          fullHistory[fullHistory.length - 2]['weight'];
+    if (!hasTodayData) {
+      fullData.add({'date': DateTime.now(), 'weight': widget.currentWeight});
     }
 
-    List<FlSpot> trendSpots = [];
-    double? predictedWeightIn30Days;
+    fullData.sort((a, b) => (a['date'] as DateTime).compareTo(b['date']));
 
-    // --------------------------------------------------------
-    // [예측 로직] 데이터 10개 이하: 평균 / 10개 초과: 선형회귀
-    // --------------------------------------------------------
-    if (fullHistory.isNotEmpty) {
-      if (fullHistory.length <= 10) {
-        // [10개 이하] 단순 평균값
-        double totalWeight = 0;
-        for (var h in fullHistory) {
-          totalWeight += (h['weight'] as num).toDouble();
+    if (fullData.isEmpty) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: Text("데이터가 없습니다.")),
+      );
+    }
+
+    // 2. 그래프 데이터 생성
+    DateTime firstDate = fullData.first['date'];
+    DateTime oldestDate = _normalizeDate(firstDate);
+
+    List<FlSpot> spots = [];
+    List<String> topLabels = [];
+    List<String> bottomLabels = [];
+    List<String> tooltips = [];
+
+    int maxXIndex = 0;
+
+    if (_selectedPeriod == "일간") {
+      int totalDays = today.difference(oldestDate).inDays + 1;
+      maxXIndex = max(6, totalDays - 1);
+
+      for (int i = 0; i <= maxXIndex; i++) {
+        DateTime targetDate = today.subtract(Duration(days: maxXIndex - i));
+
+        bool isToday = _normalizeDate(targetDate).isAtSameMomentAs(today);
+        topLabels.add(
+          isToday ? "오늘" : DateFormat('E', 'ko_KR').format(targetDate),
+        );
+        bottomLabels.add(DateFormat('M.d').format(targetDate));
+        tooltips.add(DateFormat('yyyy.MM.dd').format(targetDate));
+
+        var match = fullData.where(
+          (e) => _normalizeDate(e['date']).isAtSameMomentAs(targetDate),
+        );
+        if (match.isNotEmpty) {
+          spots.add(
+            FlSpot(i.toDouble(), (match.last['weight'] as num).toDouble()),
+          );
         }
-        predictedWeightIn30Days = totalWeight / fullHistory.length;
-        // 추세선은 그리지 않음
-      } else {
-        // [10개 초과] 선형 회귀 (Linear Regression)
-        DateTime startDate = fullHistory.first['date'];
-
-        double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-        int n = fullHistory.length;
-
-        for (var h in fullHistory) {
-          double x = (h['date'] as DateTime)
-              .difference(startDate)
-              .inDays
-              .toDouble();
-          final double y = (h['weight'] as num?)?.toDouble() ?? double.nan;
-          if (!y.isFinite) continue;
-
-          sumX += x;
-          sumY += y;
-          sumXY += (x * y);
-          sumXX += (x * x);
-        }
-
-        final double denominator = (n * sumXX - sumX * sumX);
-        double slope = 0;
-        double intercept = 0;
-        if (denominator != 0) {
-          slope = (n * sumXY - sumX * sumY) / denominator;
-          intercept = (sumY - slope * sumX) / n;
-        } else {
-          slope = double.nan;
-          intercept = double.nan;
-        }
-
-        // 30일 후 예측
-        int lastDayDays = (fullHistory.last['date'] as DateTime)
-            .difference(startDate)
-            .inDays;
-        predictedWeightIn30Days = (slope * (lastDayDays + 30)) + intercept;
-
-        // 추세선(점선) 계산
-        DateTime today = DateTime.now();
-        DateTime viewEndDate = DateTime(today.year, today.month, today.day);
-        DateTime viewStartDate;
-
-        if (_selectedPeriod == "일간") {
-          viewStartDate = viewEndDate.subtract(const Duration(days: 6));
-        } else if (_selectedPeriod == "주간") {
-          viewStartDate = viewEndDate.subtract(const Duration(days: 6 * 7));
-        } else {
-          viewStartDate = DateTime(viewEndDate.year, viewEndDate.month - 6, 1);
-        }
-
-        double startX = viewStartDate.difference(startDate).inDays.toDouble();
-        double endX = viewEndDate.difference(startDate).inDays.toDouble();
-
-        double startY = (slope * startX) + intercept;
-        double endY = (slope * endX) + intercept;
-
-        trendSpots = [FlSpot(0, startY), FlSpot(6, endY)];
       }
+    } else if (_selectedPeriod == "주간") {
+      DateTime thisWeekStart = today.subtract(
+        Duration(days: today.weekday - 1),
+      );
+      DateTime oldestWeekStart = oldestDate.subtract(
+        Duration(days: oldestDate.weekday - 1),
+      );
 
-      if (predictedWeightIn30Days != null && predictedWeightIn30Days < 0) {
-        predictedWeightIn30Days = 0;
+      int totalWeeks =
+          (thisWeekStart.difference(oldestWeekStart).inDays / 7).round() + 1;
+      maxXIndex = max(6, totalWeeks - 1);
+
+      for (int i = 0; i <= maxXIndex; i++) {
+        DateTime targetStart = thisWeekStart.subtract(
+          Duration(days: (maxXIndex - i) * 7),
+        );
+        DateTime targetEnd = targetStart.add(const Duration(days: 6));
+
+        if (i == maxXIndex) {
+          topLabels.add("");
+          bottomLabels.add("이번 주");
+        } else {
+          topLabels.add("");
+          bottomLabels.add("~${DateFormat('M.d').format(targetEnd)}");
+        }
+        tooltips.add(
+          "${DateFormat('M.d').format(targetStart)}~${DateFormat('M.d').format(targetEnd)}",
+        );
+
+        var matches = fullData.where((e) {
+          DateTime d = _normalizeDate(e['date']);
+          return !d.isBefore(targetStart) && !d.isAfter(targetEnd);
+        });
+
+        if (matches.isNotEmpty) {
+          double avgWeight =
+              matches
+                  .map((e) => (e['weight'] as num).toDouble())
+                  .reduce((a, b) => a + b) /
+              matches.length;
+          spots.add(FlSpot(i.toDouble(), avgWeight));
+        }
       }
-    }
-
-    // 메인 그래프 데이터
-    List<FlSpot> mainSpots = chartDataList
-        .map((e) => FlSpot(e.xIndex.toDouble(), e.weight))
-        .toList();
-
-    // Y축 범위 계산
-    List<double> allYValues = [
-      ...mainSpots.map((e) => e.y),
-      ...trendSpots.map((e) => e.y),
-    ];
-
-    double minW, maxW, yInterval;
-
-    if (allYValues.isEmpty) {
-      minW = 0;
-      maxW = 10;
-      yInterval = 2.5;
     } else {
-      double dataMin = allYValues.reduce(min);
-      double dataMax = allYValues.reduce(max);
+      DateTime thisMonthStart = DateTime(today.year, today.month, 1);
+      DateTime oldestMonthStart = DateTime(
+        oldestDate.year,
+        oldestDate.month,
+        1,
+      );
 
-      if (dataMax == dataMin) {
-        dataMin -= 1;
-        dataMax += 1;
+      int totalMonths =
+          (thisMonthStart.year - oldestMonthStart.year) * 12 +
+          (thisMonthStart.month - oldestMonthStart.month) +
+          1;
+      maxXIndex = max(6, totalMonths - 1);
+
+      for (int i = 0; i <= maxXIndex; i++) {
+        int monthsToSubtract = maxXIndex - i;
+        DateTime targetMonth = DateTime(
+          thisMonthStart.year,
+          thisMonthStart.month - monthsToSubtract,
+          1,
+        );
+
+        if (i == maxXIndex) {
+          topLabels.add("");
+          bottomLabels.add("이번 달");
+        } else {
+          topLabels.add("");
+          bottomLabels.add(DateFormat('yy.MM').format(targetMonth));
+        }
+        tooltips.add(DateFormat('yyyy년 M월').format(targetMonth));
+
+        var matches = fullData.where((e) {
+          DateTime d = e['date'];
+          return d.year == targetMonth.year && d.month == targetMonth.month;
+        });
+
+        if (matches.isNotEmpty) {
+          double avgWeight =
+              matches
+                  .map((e) => (e['weight'] as num).toDouble())
+                  .reduce((a, b) => a + b) /
+              matches.length;
+          spots.add(FlSpot(i.toDouble(), avgWeight));
+        }
+      }
+    }
+
+    // 3. Y축 범위 계산 (정확히 5등분) - 수정된 부분
+    double dataMin = spots.isEmpty ? 0 : spots.map((e) => e.y).reduce(min);
+    double dataMax = spots.isEmpty ? 10 : spots.map((e) => e.y).reduce(max);
+
+    // 데이터 값이 하나거나 같을 경우 강제로 범위 확장
+    if (dataMax == dataMin) {
+      dataMax += 1.0;
+      dataMin -= 1.0;
+    }
+
+    // 위아래 여유 공간 (전체 범위의 15% 정도)
+    double rawRange = dataMax - dataMin;
+    double margin = rawRange * 0.15;
+
+    double adjustedMin = dataMin - margin;
+    double adjustedMax = dataMax + margin;
+    double adjustedRange = adjustedMax - adjustedMin;
+
+    // 5개의 라벨 = 4개의 구간 (interval)
+    double interval = adjustedRange / 4.0;
+
+    // 계산된 interval로 정확한 min, max 재설정
+    // (이렇게 해야 차트가 interval에 맞춰 딱 떨어지게 그려짐)
+    double chartMinY = adjustedMin;
+    double chartMaxY = adjustedMin + (interval * 4);
+
+    // 4. UI 레이아웃 크기
+    double availableWidth = MediaQuery.of(context).size.width - 44 - 45;
+    double unitWidth = availableWidth / 6;
+    double chartContentWidth = (maxXIndex * unitWidth) + 40.0;
+
+    // 5. 변화량
+    double diff = 0;
+    if (fullData.length >= 2) {
+      diff =
+          (fullData.last['weight'] as num).toDouble() -
+          (fullData[fullData.length - 2]['weight'] as num).toDouble();
+    }
+
+    // 6. AI 예측
+    double? predictedWeight;
+    if (fullData.length <= 10) {
+      predictedWeight =
+          fullData
+              .map((e) => (e['weight'] as num).toDouble())
+              .reduce((a, b) => a + b) /
+          fullData.length;
+    } else {
+      DateTime start = fullData.first['date'];
+      double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+      int n = fullData.length;
+      for (var h in fullData) {
+        double x = (h['date'] as DateTime).difference(start).inDays.toDouble();
+        double y = (h['weight'] as num).toDouble();
+        sumX += x;
+        sumY += y;
+        sumXY += (x * y);
+        sumXX += (x * x);
       }
 
-      double rawRange = dataMax - dataMin;
-      double targetInterval = rawRange / 4.0;
-      if (!targetInterval.isFinite || targetInterval == 0) {
-        minW = 0;
-        maxW = 10;
-        yInterval = 2.5;
-      } else {
-        double magnitude = pow(
-          10,
-          (log(targetInterval) / ln10).floor(),
-        ).toDouble();
-        double niceStep = targetInterval / magnitude;
+      double denominatorCorrect = (n * sumXX - sumX * sumX);
 
-        if (niceStep <= 1.0)
-          niceStep = 1.0;
-        else if (niceStep <= 2.0)
-          niceStep = 2.0;
-        else if (niceStep <= 2.5)
-          niceStep = 2.5;
-        else
-          niceStep = 5.0;
-
-        yInterval = niceStep * magnitude;
-        if (!yInterval.isFinite || yInterval == 0) {
-          minW = 0;
-          maxW = 10;
-          yInterval = 2.5;
-        } else {
-          minW = (dataMin / yInterval).floorToDouble() * yInterval;
-          maxW = minW + (yInterval * 4);
-
-          if (maxW < dataMax) {
-            yInterval *= 2;
-            minW = (dataMin / yInterval).floorToDouble() * yInterval;
-            maxW = minW + (yInterval * 4);
-          }
-        }
+      if (denominatorCorrect != 0) {
+        double slope = (n * sumXY - sumX * sumY) / denominatorCorrect;
+        double intercept = (sumY - slope * sumX) / n;
+        int lastDay = (fullData.last['date'] as DateTime)
+            .difference(start)
+            .inDays;
+        predictedWeight = (slope * (lastDay + 30)) + intercept;
       }
     }
 
@@ -404,7 +475,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // [수정] (+) 버튼 삭제됨 (Row 내부 GestureDetector 제거)
           Row(
             children: [
               Container(
@@ -431,223 +501,206 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
             ],
           ),
           const SizedBox(height: 20),
+
           Center(child: _buildPeriodTabs()),
           const SizedBox(height: 24),
 
-          // 차트 영역
           SizedBox(
             height: 200,
-            width: double.infinity,
-            child: mainSpots.isEmpty && widget.history.isEmpty
-                ? const Center(
-                    child: Text(
-                      "데이터가 부족합니다.",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : LineChart(
+            child: Row(
+              children: [
+                // 1. 고정 Y축
+                SizedBox(
+                  width: 45,
+                  child: LineChart(
                     LineChartData(
-                      lineTouchData: LineTouchData(
-                        touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (spot) => const Color(0xFF44403B),
-                          getTooltipItems: (touchedSpots) {
-                            return touchedSpots.map((spot) {
-                              if (spot.barIndex == 1) return null;
-                              if (!spot.x.isFinite || !spot.y.isFinite) {
-                                return null;
-                              }
-                              var data = chartDataList.firstWhere(
-                                (e) => e.xIndex == spot.x.toInt(),
-                                orElse: () => _ChartData(0, 0, ''),
-                              );
-                              if (data.tooltipDate.isEmpty) return null;
-                              return LineTooltipItem(
-                                "${data.tooltipDate}\n${spot.y.toStringAsFixed(2)}kg",
-                                const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                      minY: chartMinY,
+                      maxY: chartMaxY,
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            interval: interval,
+                            getTitlesWidget: (value, meta) {
+                              // 부동소수점 오차 방지를 위해 근사값 체크
+                              // 정확히 interval 배수 위치에 있는 값만 표시
+                              return Text(
+                                value.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFFA8A29E),
                                 ),
                               );
-                            }).toList();
-                          },
+                            },
+                          ),
                         ),
-                      ),
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        horizontalInterval: yInterval,
-                        getDrawingHorizontalLine: (value) => FlLine(
-                          color: Colors.grey.withOpacity(0.05),
-                          strokeWidth: 1,
-                        ),
-                      ),
-                      titlesData: FlTitlesData(
-                        topTitles: const AxisTitles(
+                        bottomTitles: const AxisTitles(
                           sideTitles: SideTitles(showTitles: false),
                         ),
                         rightTitles: const AxisTitles(
                           sideTitles: SideTitles(showTitles: false),
                         ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 45,
-                            interval: yInterval,
-                            getTitlesWidget: (value, meta) {
-                              if (!value.isFinite ||
-                                  !yInterval.isFinite ||
-                                  yInterval == 0) {
-                                return const SizedBox();
-                              }
-                              double step = (value - minW) / yInterval;
-                              if ((step - step.round()).abs() > 0.01) {
-                                return const SizedBox();
-                              }
-                              String text = (value % 1 == 0)
-                                  ? value.toInt().toString()
-                                  : value.toStringAsFixed(1);
-                              bool isMin = (value - minW).abs() < 0.01;
-                              bool isMax = (value - maxW).abs() < 0.01;
-
-                              return Container(
-                                color: Colors.white,
-                                margin: const EdgeInsets.only(right: 5),
-                                height: 20,
-                                alignment: isMin
-                                    ? Alignment.bottomCenter
-                                    : (isMax
-                                          ? Alignment.topCenter
-                                          : Alignment.center),
-                                child: Text(
-                                  text,
-                                  style: const TextStyle(
-                                    color: Color(0xFFA8A29E),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: 1,
-                            getTitlesWidget: (value, meta) {
-                              if (!value.isFinite) return const SizedBox();
-                              int index = value.toInt();
-                              if (index < 0 || index > 6)
-                                return const SizedBox();
-
-                              DateTime now = DateTime.now();
-                              DateTime today = DateTime(
-                                now.year,
-                                now.month,
-                                now.day,
-                              );
-                              int offset = 6 - index;
-                              String text = "";
-                              bool isLast = (offset == 0);
-
-                              if (_selectedPeriod == "일간") {
-                                DateTime target = today.subtract(
-                                  Duration(days: offset),
-                                );
-                                text = isLast
-                                    ? "오늘"
-                                    : DateFormat('M.d').format(target);
-                              } else if (_selectedPeriod == "주간") {
-                                DateTime weekEnd = today.subtract(
-                                  Duration(days: offset * 7),
-                                );
-                                text = isLast
-                                    ? "이번 주"
-                                    : "~${DateFormat('M.d').format(weekEnd)}";
-                              } else {
-                                DateTime target = DateTime(
-                                  today.year,
-                                  today.month - offset,
-                                  1,
-                                );
-                                text = isLast
-                                    ? "이번 달"
-                                    : DateFormat('yy.MM').format(target);
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 10),
-                                child: Text(
-                                  text,
-                                  style: TextStyle(
-                                    color: isLast
-                                        ? const Color(0xFF44403B)
-                                        : const Color(0xFFA8A29E),
-                                    fontWeight: isLast
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              );
-                            },
-                            reservedSize: 32,
-                          ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
                         ),
                       ),
+                      gridData: const FlGridData(show: false),
                       borderData: FlBorderData(show: false),
-                      minX: 0,
-                      maxX: 6,
-                      minY: minW,
-                      maxY: maxW,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: mainSpots,
-                          isCurved: true,
-                          color: const Color(0xFF44403B),
-                          barWidth: 3.5,
-                          isStrokeCapRound: true,
-                          dotData: FlDotData(
-                            show: true,
-                            getDotPainter: (spot, percent, barData, index) {
-                              bool isLast = spot.x == 6;
-                              return FlDotCirclePainter(
-                                radius: isLast ? 5 : 3.5,
-                                color: isLast
-                                    ? const Color(0xFFFF8A00)
-                                    : const Color(0xFF44403B),
-                                strokeWidth: 2,
-                                strokeColor: Colors.white,
-                              );
-                            },
-                          ),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                const Color(0xFF44403B).withOpacity(0.15),
-                                const Color(0xFF44403B).withOpacity(0.0),
-                              ],
-                            ),
-                          ),
-                        ),
-                        if (trendSpots.isNotEmpty)
-                          LineChartBarData(
-                            spots: trendSpots,
-                            isCurved: false,
-                            color: Colors.grey.withOpacity(0.5),
-                            barWidth: 2,
-                            dashArray: [5, 5],
-                            dotData: const FlDotData(show: false),
-                          ),
-                      ],
+                      lineBarsData: [LineChartBarData(spots: [], show: false)],
                     ),
                   ),
+                ),
+
+                // 2. 스크롤 그래프
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: Container(
+                      width: chartContentWidth,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: LineChart(
+                        LineChartData(
+                          minX: 0,
+                          maxX: maxXIndex.toDouble(),
+                          minY: chartMinY,
+                          maxY: chartMaxY,
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (spot) =>
+                                  const Color(0xFF44403B),
+                              getTooltipItems: (touchedSpots) {
+                                return touchedSpots.map((spot) {
+                                  int idx = spot.x.toInt();
+                                  String tooltipText =
+                                      (idx >= 0 && idx < tooltips.length)
+                                      ? tooltips[idx]
+                                      : "";
+                                  return LineTooltipItem(
+                                    "$tooltipText\n${spot.y.toStringAsFixed(2)}kg",
+                                    const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                            ),
+                          ),
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                reservedSize: 40,
+                                getTitlesWidget: (value, meta) {
+                                  int i = value.toInt();
+                                  if (i < 0 || i >= bottomLabels.length)
+                                    return const SizedBox();
+
+                                  String top = topLabels[i];
+                                  String bottom = bottomLabels[i];
+                                  bool isFocus = (i == maxXIndex);
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (top.isNotEmpty)
+                                          Text(
+                                            top,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: isFocus
+                                                  ? const Color(0xFF44403B)
+                                                  : const Color(0xFFA8A29E),
+                                              fontWeight: isFocus
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                        Text(
+                                          bottom,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: isFocus
+                                                ? const Color(0xFF44403B)
+                                                : const Color(0xFFA8A29E),
+                                            fontWeight: isFocus
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            leftTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            rightTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                          ),
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval: interval,
+                            getDrawingHorizontalLine: (v) => FlLine(
+                              color: Colors.grey.withOpacity(0.1),
+                              strokeWidth: 1,
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: spots,
+                              isCurved: true,
+                              color: const Color(0xFF44403B),
+                              barWidth: 3.5,
+                              dotData: FlDotData(
+                                show: true,
+                                getDotPainter: (spot, p, b, i) =>
+                                    FlDotCirclePainter(
+                                      radius: (spot.x == maxXIndex) ? 5 : 3.5,
+                                      color: (spot.x == maxXIndex)
+                                          ? const Color(0xFFFF8A00)
+                                          : const Color(0xFF44403B),
+                                      strokeWidth: 2,
+                                      strokeColor: Colors.white,
+                                    ),
+                              ),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    const Color(0xFF44403B).withOpacity(0.15),
+                                    const Color(0xFF44403B).withOpacity(0.0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 28),
 
-          // 하단 정보
           Row(
             children: [
               Expanded(
@@ -669,8 +722,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
             ],
           ),
 
-          // 미래 예측 박스
-          if (predictedWeightIn30Days != null) ...[
+          if (predictedWeight != null) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -701,7 +753,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          "약 ${predictedWeightIn30Days.toStringAsFixed(2)} kg 예상",
+                          "약 ${predictedWeight.toStringAsFixed(2)} kg 예상",
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -720,88 +772,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
     );
   }
 
-  List<_ChartData> _prepareChartData() {
-    List<Map<String, dynamic>> rawHistory = widget.history;
-    if (rawHistory.isEmpty) return [];
-
-    Map<String, Map<String, dynamic>> distinctMap = {};
-    List<Map<String, dynamic>> sortedRaw = List.from(rawHistory);
-    sortedRaw.sort((a, b) => (a['date'] as DateTime).compareTo(b['date']));
-
-    for (var h in sortedRaw) {
-      DateTime d = h['date'];
-      String dateKey = "${d.year}-${d.month}-${d.day}";
-      distinctMap[dateKey] = h;
-    }
-    List<Map<String, dynamic>> cleanHistory = distinctMap.values.toList();
-
-    DateTime now = DateTime.now();
-    DateTime today = DateTime(now.year, now.month, now.day);
-    List<_ChartData> result = [];
-
-    for (int i = 0; i < 7; i++) {
-      int offset = 6 - i;
-      if (_selectedPeriod == "일간") {
-        DateTime targetDate = today.subtract(Duration(days: offset));
-        var matches = cleanHistory.where((h) {
-          DateTime d = h['date'];
-          return d.year == targetDate.year &&
-              d.month == targetDate.month &&
-              d.day == targetDate.day;
-        }).toList();
-        if (matches.isNotEmpty) {
-          final double weight =
-              (matches.first['weight'] as num?)?.toDouble() ?? double.nan;
-          if (!weight.isFinite) continue;
-          result.add(
-            _ChartData(i, weight, DateFormat('yyyy.MM.dd').format(targetDate)),
-          );
-        }
-      } else if (_selectedPeriod == "주간") {
-        DateTime weekEnd = today.subtract(Duration(days: offset * 7));
-        DateTime weekStart = weekEnd.subtract(const Duration(days: 6));
-        var matches = cleanHistory.where((h) {
-          DateTime d = h['date'];
-          DateTime dDate = DateTime(d.year, d.month, d.day);
-          return !dDate.isBefore(weekStart) && !dDate.isAfter(weekEnd);
-        }).toList();
-        if (matches.isNotEmpty) {
-          final weights = matches
-              .map((e) => (e['weight'] as num?)?.toDouble() ?? double.nan)
-              .where((w) => w.isFinite)
-              .toList();
-          if (weights.isEmpty) continue;
-          double avg = weights.reduce((a, b) => a + b) / weights.length;
-          String tooltip =
-              "${DateFormat('M.d').format(weekStart)} ~ ${DateFormat('M.d').format(weekEnd)}";
-          result.add(_ChartData(i, avg, tooltip));
-        }
-      } else {
-        DateTime targetMonthDate = DateTime(
-          today.year,
-          today.month - offset,
-          1,
-        );
-        var matches = cleanHistory.where((h) {
-          DateTime d = h['date'];
-          return d.year == targetMonthDate.year &&
-              d.month == targetMonthDate.month;
-        }).toList();
-        if (matches.isNotEmpty) {
-          final weights = matches
-              .map((e) => (e['weight'] as num?)?.toDouble() ?? double.nan)
-              .where((w) => w.isFinite)
-              .toList();
-          if (weights.isEmpty) continue;
-          double avg = weights.reduce((a, b) => a + b) / weights.length;
-          String tooltip = DateFormat('yyyy년 M월').format(targetMonthDate);
-          result.add(_ChartData(i, avg, tooltip));
-        }
-      }
-    }
-    return result;
-  }
-
   Widget _buildPeriodTabs() {
     return Container(
       padding: const EdgeInsets.all(4),
@@ -814,7 +784,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
         children: ["일간", "주간", "월간"].map((period) {
           bool isSelected = _selectedPeriod == period;
           return GestureDetector(
-            onTap: () => setState(() => _selectedPeriod = period),
+            onTap: () => _onPeriodChanged(period),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
               decoration: BoxDecoration(
