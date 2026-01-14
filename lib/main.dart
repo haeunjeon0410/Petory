@@ -550,6 +550,7 @@ class _MainPageState extends State<MainPage> {
         },
       ),
       AiChatPage(
+        key: ValueKey(record.selectedPetId),
         onRefresh: () {
           record.saveToStorage();
           setState(() {});
