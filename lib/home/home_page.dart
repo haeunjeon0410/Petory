@@ -10,6 +10,8 @@ import 'widgets/checklist_tile.dart';
 import 'sheets/pet_register_sheet.dart';
 import 'sheets/task_editor_sheet.dart';
 import 'sheets/task_detail_dialog.dart';
+import '../shared/app_dialog_style.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -57,6 +59,51 @@ class _HomePageState extends State<HomePage> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   // ------------------------------------------------------------------------
+  // [수정] 건강검진/예방접종 D-Day 계산 로직 추가
+  // ------------------------------------------------------------------------
+  String _calculateHealthDDay(String petId) {
+    if (petId.isEmpty) return "--";
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // record_data.dart의 petSchedules는 Map<String, Map<DateTime, List<Schedule>>> 구조입니다.
+    final petDateMap = record.petSchedules[petId];
+
+    if (petDateMap == null || petDateMap.isEmpty) return "--";
+
+    List<DateTime> healthDates = [];
+
+    // 모든 날짜의 일정을 순회하며 키워드를 찾습니다.
+    for (final List<record.Schedule> schedulesList in petDateMap.values) {
+      for (final record.Schedule schedule in schedulesList) {
+        final String title = schedule.title;
+        final DateTime date = schedule.date;
+
+        if (title.contains("건강검진") || title.contains("예방접종")) {
+          final DateTime normalizedDate = DateTime(
+            date.year,
+            date.month,
+            date.day,
+          );
+          if (!normalizedDate.isBefore(today)) {
+            healthDates.add(normalizedDate);
+          }
+        }
+      }
+    }
+
+    if (healthDates.isEmpty) return "--";
+
+    healthDates.sort();
+    final DateTime targetDate = healthDates.first;
+    final int difference = targetDate.difference(today).inDays;
+
+    if (difference == 0) return "D-Day";
+    return "D-$difference";
+  }
+
+  // ------------------------------------------------------------------------
   // [V2] 기능 로직 (등록, 삭제, 체크리스트 관리)
   // ------------------------------------------------------------------------
 
@@ -65,8 +112,8 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: AppDialogStyle.insetPadding,
+        shape: AppDialogStyle.shape(),
         child: PetRegisterSheet(existingPet: existingPet),
       ),
     );
@@ -126,7 +173,7 @@ class _HomePageState extends State<HomePage> {
             "isNeutered": result.isNeutered,
             "imagePath": imagePath,
           };
-          record.petChecklists[newId] = [];
+          record.petChecklists[newId] = {};
           _selectedPetIndex = record.myPetIds.length - 1;
           record.selectedPetId = newId;
         }
@@ -139,13 +186,24 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("반려동물 삭제"),
-        content: Text("'$petName' 프로필을 삭제하시겠습니까?"),
-        backgroundColor: Colors.white,
+        backgroundColor: AppDialogStyle.background,
+        shape: AppDialogStyle.shape(),
+        insetPadding: AppDialogStyle.insetPadding,
+        title: const Text(
+          "반려동물 삭제",
+          style: TextStyle(color: AppDialogStyle.text),
+        ),
+        content: Text(
+          "'$petName' 프로필을 삭제하시겠습니까?",
+          style: const TextStyle(color: AppDialogStyle.mutedText),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("취소", style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              "취소",
+              style: TextStyle(color: AppDialogStyle.mutedText),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -172,7 +230,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openTaskSheet(
-    String petId, {
+    String petId,
+    DateTime dateKey, {
     int? editIndex,
     Task? existingTask,
   }) async {
@@ -180,8 +239,8 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: AppDialogStyle.insetPadding,
+        shape: AppDialogStyle.shape(),
         child: TaskEditorSheet(existingTask: existingTask),
       ),
     );
@@ -194,15 +253,15 @@ class _HomePageState extends State<HomePage> {
           "icon": result.icon,
           "isDone": result.isDone,
         };
-        if (record.petChecklists[petId] == null) {
-          record.petChecklists[petId] = [];
-        }
+        record.petChecklists.putIfAbsent(petId, () => {});
+        record.petChecklists[petId]!.putIfAbsent(dateKey, () => []);
         if (editIndex != null) {
-          record.petChecklists[petId]![editIndex] = taskMap;
+          record.petChecklists[petId]![dateKey]![editIndex] = taskMap;
         } else {
-          record.petChecklists[petId]!.add(taskMap);
+          record.petChecklists[petId]![dateKey]!.add(taskMap);
         }
       });
+      widget.onRefresh?.call();
     }
   }
 
@@ -232,12 +291,18 @@ class _HomePageState extends State<HomePage> {
       currentId = record.myPetIds[_selectedPetIndex];
     }
 
+    final DateTime dateKey = record.normalizeDate(_selectedDate);
+
     // 데이터 로드
     Pet? currentPet;
     List<Task> currentTasks = [];
     int foodAmount = 0;
+    String healthDDay = "--"; // [추가] 초기값 설정
 
     if (hasPet && currentId != null) {
+      // D-Day 계산 실행
+      healthDDay = _calculateHealthDDay(currentId);
+
       var pData = record.petProfiles[currentId];
       if (pData != null) {
         String? imgPath = pData['imagePath'];
@@ -269,7 +334,8 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
-      var cList = record.petChecklists[currentId];
+      var dateMap = record.petChecklists[currentId];
+      final cList = dateMap?[dateKey];
       if (cList != null) {
         currentTasks = cList
             .map(
@@ -298,27 +364,19 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF92C6D1), // [V1] 하늘색 배경
-      // [구조 변경] Stack을 사용하여 프로필(배경)과 체크리스트(시트) 분리
       body: Stack(
         children: [
-          // -------------------------------------------------------
-          // 1. 배경 레이어: 날짜 + 프로필 정보 (고정된 위치)
-          // -------------------------------------------------------
+          // 1. 배경 레이어: 날짜 + 프로필 정보
           Column(
             children: [
-              // 1. 날짜 선택기
               _buildDatePicker(),
-
               const SizedBox(height: 45),
-
-              // 2. 프로필 정보 (PetTabBar 제거됨)
               Expanded(
                 child: SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
                   child: Column(
                     children: [
                       if (currentPet != null) ...[
-                        // 이름 & 메뉴 버튼 (Stack으로 중앙 정렬 + 우측 배치)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: SizedBox(
@@ -326,7 +384,6 @@ class _HomePageState extends State<HomePage> {
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
-                                // A. 중앙 펫 이름
                                 Text(
                                   currentPet.name,
                                   style: const TextStyle(
@@ -335,8 +392,6 @@ class _HomePageState extends State<HomePage> {
                                     color: Colors.black87,
                                   ),
                                 ),
-
-                                // B. 우측 끝 메뉴 버튼 (세로 점 3개)
                                 Positioned(
                                   right: 0,
                                   child: Container(
@@ -420,8 +475,6 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         const SizedBox(height: 20),
-
-                        // 프로필 사진
                         GestureDetector(
                           onTap: () =>
                               _openRegisterSheet(existingPet: currentPet),
@@ -446,8 +499,6 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         const SizedBox(height: 40),
-
-                        // 지표 섹션
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
@@ -467,17 +518,15 @@ class _HomePageState extends State<HomePage> {
                               ),
                               _buildMetricItem(
                                 "건강검진",
-                                "D-10",
+                                healthDDay,
                                 const Color(0xFF2D4464),
                                 Colors.white,
                               ),
                             ],
                           ),
                         ),
-                        // 시트가 올라올 공간 확보
                         const SizedBox(height: 100),
                       ] else ...[
-                        // 펫 없음 상태
                         const SizedBox(height: 60),
                         GestureDetector(
                           onTap: () => _openRegisterSheet(),
@@ -515,18 +564,16 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
 
-          // -------------------------------------------------------
           // 2. 전경 레이어: 체크리스트 (DraggableScrollableSheet)
-          // -------------------------------------------------------
           DraggableScrollableSheet(
-            initialChildSize: 0.33, // 초기 높이 비율
-            minChildSize: 0.33, // 최소 높이
-            maxChildSize: 0.92, // 최대 높이
+            initialChildSize: 0.33,
+            minChildSize: 0.33,
+            maxChildSize: 0.92,
             snap: true,
             builder: (BuildContext context, ScrollController scrollController) {
               return Container(
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF1F2ED), // 베이지색 배경
+                  color: Color(0xFFF1F2ED),
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
@@ -547,7 +594,6 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 핸들 바 (시각적 힌트)
                         Center(
                           child: Container(
                             width: 40,
@@ -559,27 +605,22 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-
-                        // 체크리스트 헤더
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                const Text(
-                                  "오늘의 체크리스트",
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF44403B),
-                                  ),
-                                ),
-                              ],
+                            const Text(
+                              "오늘의 체크리스트",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF44403B),
+                              ),
                             ),
                             GestureDetector(
                               onTap: () {
                                 if (hasPet && currentId != null) {
-                                  _openTaskSheet(currentId);
+                                  // [수정] dateKey 인자 추가
+                                  _openTaskSheet(currentId, dateKey);
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -605,8 +646,6 @@ class _HomePageState extends State<HomePage> {
                           ],
                         ),
                         const SizedBox(height: 20),
-
-                        // 체크리스트 아이템들
                         currentTasks.isEmpty
                             ? Center(
                                 child: Padding(
@@ -635,26 +674,29 @@ class _HomePageState extends State<HomePage> {
                                     task: task,
                                     onToggle: () {
                                       setState(() {
-                                        record.petChecklists[currentId]![index]['isDone'] =
+                                        record.petChecklists[currentId]![dateKey]![index]['isDone'] =
                                             !task.isDone;
                                       });
+                                      widget.onRefresh?.call();
                                     },
                                     onTap: () => _showDetailDialog(task),
                                     onEdit: () => _openTaskSheet(
                                       currentId!,
+                                      dateKey,
                                       editIndex: index,
                                       existingTask: task,
                                     ),
                                     onDelete: () {
                                       setState(() {
-                                        record.petChecklists[currentId]!
+                                        record
+                                            .petChecklists[currentId]![dateKey]!
                                             .removeAt(index);
                                       });
+                                      widget.onRefresh?.call();
                                     },
                                   );
                                 },
                               ),
-                        // 하단 여백
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -668,10 +710,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ------------------------------------------------------------------------
   // [V1] UI 위젯 빌더 (날짜, 이미지, 메트릭)
-  // ------------------------------------------------------------------------
-
   Widget _buildDatePicker() {
     final List<String> weekdays = ["", "월", "화", "수", "목", "금", "토", "일"];
     return Container(

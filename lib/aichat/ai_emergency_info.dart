@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../shared/app_dialog_style.dart';
 
 class HospitalCard extends StatelessWidget {
   final String name;
@@ -41,9 +42,26 @@ void showEmergencyDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text("🚨 응급 상황 안내"),
-      content: const Text("가까운 24시 동물병원 리스트를 확인하고 즉시 연락하세요."),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("확인"))],
+      backgroundColor: AppDialogStyle.background,
+      shape: AppDialogStyle.shape(),
+      insetPadding: AppDialogStyle.insetPadding,
+      title: const Text(
+        "응급 상황 안내",
+        style: TextStyle(color: AppDialogStyle.text),
+      ),
+      content: const Text(
+        "??? 24? ???? ???? ???? ?? ?????.",
+        style: TextStyle(color: AppDialogStyle.mutedText),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            "??",
+            style: TextStyle(color: AppDialogStyle.text),
+          ),
+        ),
+      ],
     ),
   );
 }

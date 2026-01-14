@@ -268,7 +268,8 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
               .difference(startDate)
               .inDays
               .toDouble();
-          double y = h['weight'];
+          final double y = (h['weight'] as num?)?.toDouble() ?? double.nan;
+          if (!y.isFinite) continue;
 
           sumX += x;
           sumY += y;
@@ -276,8 +277,16 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           sumXX += (x * x);
         }
 
-        double slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-        double intercept = (sumY - slope * sumX) / n;
+        final double denominator = (n * sumXX - sumX * sumX);
+        double slope = 0;
+        double intercept = 0;
+        if (denominator != 0) {
+          slope = (n * sumXY - sumX * sumY) / denominator;
+          intercept = (sumY - slope * sumX) / n;
+        } else {
+          slope = double.nan;
+          intercept = double.nan;
+        }
 
         // 30일 후 예측
         int lastDayDays = (fullHistory.last['date'] as DateTime)
@@ -340,29 +349,41 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
 
       double rawRange = dataMax - dataMin;
       double targetInterval = rawRange / 4.0;
-      double magnitude = pow(
-        10,
-        (log(targetInterval) / ln10).floor(),
-      ).toDouble();
-      double niceStep = targetInterval / magnitude;
+      if (!targetInterval.isFinite || targetInterval == 0) {
+        minW = 0;
+        maxW = 10;
+        yInterval = 2.5;
+      } else {
+        double magnitude = pow(
+          10,
+          (log(targetInterval) / ln10).floor(),
+        ).toDouble();
+        double niceStep = targetInterval / magnitude;
 
-      if (niceStep <= 1.0)
-        niceStep = 1.0;
-      else if (niceStep <= 2.0)
-        niceStep = 2.0;
-      else if (niceStep <= 2.5)
-        niceStep = 2.5;
-      else
-        niceStep = 5.0;
+        if (niceStep <= 1.0)
+          niceStep = 1.0;
+        else if (niceStep <= 2.0)
+          niceStep = 2.0;
+        else if (niceStep <= 2.5)
+          niceStep = 2.5;
+        else
+          niceStep = 5.0;
 
-      yInterval = niceStep * magnitude;
-      minW = (dataMin / yInterval).floorToDouble() * yInterval;
-      maxW = minW + (yInterval * 4);
+        yInterval = niceStep * magnitude;
+        if (!yInterval.isFinite || yInterval == 0) {
+          minW = 0;
+          maxW = 10;
+          yInterval = 2.5;
+        } else {
+          minW = (dataMin / yInterval).floorToDouble() * yInterval;
+          maxW = minW + (yInterval * 4);
 
-      if (maxW < dataMax) {
-        yInterval *= 2;
-        minW = (dataMin / yInterval).floorToDouble() * yInterval;
-        maxW = minW + (yInterval * 4);
+          if (maxW < dataMax) {
+            yInterval *= 2;
+            minW = (dataMin / yInterval).floorToDouble() * yInterval;
+            maxW = minW + (yInterval * 4);
+          }
+        }
       }
     }
 
@@ -432,6 +453,9 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                           getTooltipItems: (touchedSpots) {
                             return touchedSpots.map((spot) {
                               if (spot.barIndex == 1) return null;
+                              if (!spot.x.isFinite || !spot.y.isFinite) {
+                                return null;
+                              }
                               var data = chartDataList.firstWhere(
                                 (e) => e.xIndex == spot.x.toInt(),
                                 orElse: () => _ChartData(0, 0, ''),
@@ -471,6 +495,11 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                             reservedSize: 45,
                             interval: yInterval,
                             getTitlesWidget: (value, meta) {
+                              if (!value.isFinite ||
+                                  !yInterval.isFinite ||
+                                  yInterval == 0) {
+                                return const SizedBox();
+                              }
                               double step = (value - minW) / yInterval;
                               if ((step - step.round()).abs() > 0.01) {
                                 return const SizedBox();
@@ -506,6 +535,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                             showTitles: true,
                             interval: 1,
                             getTitlesWidget: (value, meta) {
+                              if (!value.isFinite) return const SizedBox();
                               int index = value.toInt();
                               if (index < 0 || index > 6)
                                 return const SizedBox();
@@ -720,12 +750,11 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
               d.day == targetDate.day;
         }).toList();
         if (matches.isNotEmpty) {
+          final double weight =
+              (matches.first['weight'] as num?)?.toDouble() ?? double.nan;
+          if (!weight.isFinite) continue;
           result.add(
-            _ChartData(
-              i,
-              matches.first['weight'],
-              DateFormat('yyyy.MM.dd').format(targetDate),
-            ),
+            _ChartData(i, weight, DateFormat('yyyy.MM.dd').format(targetDate)),
           );
         }
       } else if (_selectedPeriod == "주간") {
@@ -737,11 +766,12 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           return !dDate.isBefore(weekStart) && !dDate.isAfter(weekEnd);
         }).toList();
         if (matches.isNotEmpty) {
-          double avg =
-              matches
-                  .map((e) => e['weight'] as double)
-                  .reduce((a, b) => a + b) /
-              matches.length;
+          final weights = matches
+              .map((e) => (e['weight'] as num?)?.toDouble() ?? double.nan)
+              .where((w) => w.isFinite)
+              .toList();
+          if (weights.isEmpty) continue;
+          double avg = weights.reduce((a, b) => a + b) / weights.length;
           String tooltip =
               "${DateFormat('M.d').format(weekStart)} ~ ${DateFormat('M.d').format(weekEnd)}";
           result.add(_ChartData(i, avg, tooltip));
@@ -758,11 +788,12 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
               d.month == targetMonthDate.month;
         }).toList();
         if (matches.isNotEmpty) {
-          double avg =
-              matches
-                  .map((e) => e['weight'] as double)
-                  .reduce((a, b) => a + b) /
-              matches.length;
+          final weights = matches
+              .map((e) => (e['weight'] as num?)?.toDouble() ?? double.nan)
+              .where((w) => w.isFinite)
+              .toList();
+          if (weights.isEmpty) continue;
+          double avg = weights.reduce((a, b) => a + b) / weights.length;
           String tooltip = DateFormat('yyyy년 M월').format(targetMonthDate);
           result.add(_ChartData(i, avg, tooltip));
         }
