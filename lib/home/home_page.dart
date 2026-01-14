@@ -392,7 +392,7 @@ class _HomePageState extends State<HomePage> {
           Column(
             children: [
               _buildDatePicker(),
-              const SizedBox(height: 40),
+              const SizedBox(height: 56),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
@@ -411,7 +411,7 @@ class _HomePageState extends State<HomePage> {
                                   child: Text(
                                     currentPet.name,
                                     style: const TextStyle(
-                                      fontSize: 38,
+                                      fontSize: 40,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: -0.3,
                                       color: Colors.white,
@@ -501,7 +501,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 18),
                         GestureDetector(
                           onTap: () =>
                               _openRegisterSheet(existingPet: currentPet),
@@ -693,7 +693,7 @@ class _HomePageState extends State<HomePage> {
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFF6F6A65),
+                                    color: Color(0xFF3B3B3B),
                                   ),
                                 ),
                               ],
