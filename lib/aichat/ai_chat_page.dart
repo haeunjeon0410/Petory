@@ -77,13 +77,13 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   void _initGemini() {
-    const String apiKey = 'AIzaSyAst0clfoDv3fJgAyXs5oIS0KtQyD3CvF4';
+    const String apiKey = 'AIzaSyDAJdn0K6M0eTpn30JzJN1m9uoCSxJQv2U';
 
     String petName = _getCurrentPetName();
     String petContext = _getPetProfileContext();
 
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash-lite',
+      model: 'gemini-2.5-flash-lite',
       apiKey: apiKey,
       systemInstruction: Content.system(
         "당신은 `$petName`의 전담 건강 매니저 '펫토리 닥터'입니다. "
@@ -96,7 +96,8 @@ class _AiChatPageState extends State<AiChatPage> {
         "6. 금지 사항: 텍스트에 ** 기호(마크다운 굵기)를 절대 적지 마세요. "
         "7. 센스 있는 마무리: 답변 끝에 보호자님이 대답할 수 있는 짧은 질문이나 관련 제안을 한 줄 추가하세요."
         "8. 말투 : 이모티콘을 적절히 사용해 친절하게 한국어로 답변하세요."
-        "9. 반려동물 상세정보: $petContext",
+        "9. 반려동물 상세정보: $petContext"
+        "10. 면책 조항: 전문가의 소견이 아니므로 실제 진단과 다르거나 부정확할 수 있음을 답변 맨 마지막에 한 문장으로 명시하세요.",
       ),
     );
     _chatSession = _model.startChat();
