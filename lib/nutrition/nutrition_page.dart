@@ -22,7 +22,6 @@ class _NutritionPageState extends State<NutritionPage> {
   late PageController _dateController;
   DateTime _selectedDate = DateTime.now();
   bool _showStats = false; // false: 기록(Input), true: 통계(Chart)
-  static const double _statsCardHeight = 460;
 
   @override
   void initState() {
@@ -76,30 +75,6 @@ class _NutritionPageState extends State<NutritionPage> {
       }
     }
     return null;
-  }
-
-  int _calculateNutrition(Map<String, dynamic> profile, String activityLevel) {
-    final double weight =
-        double.tryParse(profile['weight']?.toString() ?? '0') ?? 0;
-    if (weight <= 0) return 0;
-
-    final bool isNeutered =
-        profile['isNeutered'] == true ||
-        profile['isNeutered'].toString() == 'true';
-
-    final double rer = 70 * pow(weight, 0.75).toDouble();
-    String level = activityLevel == '저활동' ? '저조' : activityLevel;
-    double factor = 1.6;
-    if (isNeutered) {
-      if (level == '저조') factor = 1.2;
-      if (level == '보통') factor = 1.6;
-      if (level == '활발') factor = 2.0;
-    } else {
-      if (level == '저조') factor = 1.4;
-      if (level == '보통') factor = 1.8;
-      if (level == '활발') factor = 2.5;
-    }
-    return (rer * factor).round();
   }
 
   // [수정] 다이얼로그 호출 시 petId와 현재 선택된 날짜(_selectedDate)를 전달
@@ -285,7 +260,7 @@ class _NutritionPageState extends State<NutritionPage> {
 
     return Column(
       children: [
-        const SizedBox(height: 24),
+        const SizedBox(height: 30),
         Text(
           '$dateText $petName의 체중은?',
           style: const TextStyle(
@@ -299,22 +274,22 @@ class _NutritionPageState extends State<NutritionPage> {
           '${currentWeight.toStringAsFixed(2)} kg',
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 48,
+            fontSize: 52,
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 40),
 
         Container(
-          width: 220,
-          height: 220,
+          width: 240,
+          height: 240,
           decoration: BoxDecoration(
             color: const Color(0xFF7FA6E1),
             borderRadius: BorderRadius.circular(40),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF5C85C0),
-                offset: const Offset(0, 10),
+                offset: const Offset(0, 12),
                 blurRadius: 0,
               ),
             ],
@@ -323,10 +298,10 @@ class _NutritionPageState extends State<NutritionPage> {
             alignment: Alignment.center,
             children: [
               Positioned(
-                top: 40,
+                top: 45,
                 child: Container(
-                  width: 92,
-                  height: 46,
+                  width: 100,
+                  height: 50,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
@@ -341,30 +316,30 @@ class _NutritionPageState extends State<NutritionPage> {
                     padding: const EdgeInsets.only(bottom: 2.0),
                     child: const Icon(
                       Icons.arrow_drop_up_rounded,
-                      size: 46,
+                      size: 50,
                       color: Colors.redAccent,
                     ),
                   ),
                 ),
               ),
               Positioned(
-                bottom: 50,
+                bottom: 55,
                 child: Icon(
                   Icons.pets,
-                  size: 42,
+                  size: 45,
                   color: Colors.white.withOpacity(0.5),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 50),
 
         GestureDetector(
           onTap: () => _openWeightDialog(petId),
           child: Container(
-            width: 240,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            width: 260,
+            padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(30),
@@ -392,17 +367,14 @@ class _NutritionPageState extends State<NutritionPage> {
   ) {
     return Padding(
       padding: const EdgeInsets.only(top: 20),
-      child: SizedBox(
-        height: _statsCardHeight,
-        child: WeightTrendCard(
-          petName: displayPetName,
-          history: history,
-          currentWeight: currentWeight,
-          onUpdate: () {
-            setState(() => _syncProfileWeight(petId));
-            widget.onRefresh?.call();
-          },
-        ),
+      child: WeightTrendCard(
+        petName: displayPetName,
+        history: history,
+        currentWeight: currentWeight,
+        onUpdate: () {
+          setState(() => _syncProfileWeight(petId));
+          widget.onRefresh?.call();
+        },
       ),
     );
   }
@@ -471,35 +443,19 @@ class _NutritionPageState extends State<NutritionPage> {
                   // (2) 콘텐츠
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final content = _showStats
-                              ? _buildStatsView(
-                                  displayPetName,
-                                  history,
-                                  latestWeight,
-                                  currentPetId,
-                                )
-                              : _buildWeightInputView(
-                                  displayWeight,
-                                  currentPetId,
-                                  displayPetName,
-                                );
-
-                          return Align(
-                            alignment: Alignment.topCenter,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.topCenter,
-                              child: SizedBox(
-                                width: constraints.maxWidth,
-                                child: content,
-                              ),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: _showStats
+                          ? _buildStatsView(
+                              displayPetName,
+                              history,
+                              latestWeight,
+                              currentPetId,
+                            )
+                          : _buildWeightInputView(
+                              displayWeight,
+                              currentPetId,
+                              displayPetName,
                             ),
-                          );
-                        },
-                      ),
                     ),
                   ),
                 ],

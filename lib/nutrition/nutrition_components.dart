@@ -740,7 +740,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                         "현재 체중", // ?? -> 한글 복구
                         "${widget.currentWeight.toStringAsFixed(2)} kg",
                         const Color(0xFF44403B),
-                        scale: scale,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -750,7 +749,6 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
                         "${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(2)} kg",
                         const Color(0xFF2196F3),
                         isSkyBlue: true,
-                        scale: scale,
                       ),
                     ),
                   ],
@@ -815,9 +813,8 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
   }
 
   Widget _buildPeriodTabs({double scale = 1}) {
-    final double s = scale.clamp(0.85, 1.0);
     return Container(
-      padding: EdgeInsets.all(4 * s),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F2ED),
         borderRadius: BorderRadius.circular(15),
@@ -829,10 +826,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
           return GestureDetector(
             onTap: () => _onPeriodChanged(period),
             child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: 22 * s,
-                vertical: 10 * s,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFF44403B)
@@ -851,7 +845,7 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
               child: Text(
                 period,
                 style: TextStyle(
-                  fontSize: (13 * s).clamp(11, 13),
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: isSelected ? Colors.white : const Color(0xFFA8A29E),
                 ),
@@ -868,11 +862,9 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
     String value,
     Color color, {
     bool isSkyBlue = false,
-    double scale = 1,
   }) {
-    final double s = scale.clamp(0.85, 1.0);
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 18 * s),
+      padding: const EdgeInsets.symmetric(vertical: 18),
       decoration: BoxDecoration(
         color: isSkyBlue
             ? const Color(0xFF2196F3).withOpacity(0.06)
@@ -883,16 +875,13 @@ class _WeightTrendCardState extends State<WeightTrendCard> {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: (11 * s).clamp(10, 11),
-              color: const Color(0xFF605A55),
-            ),
+            style: const TextStyle(fontSize: 11, color: Color(0xFF605A55)),
           ),
-          SizedBox(height: 8 * s),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: (18 * s).clamp(15, 18),
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: color,
             ),
