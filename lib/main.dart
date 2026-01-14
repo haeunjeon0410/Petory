@@ -34,9 +34,7 @@ class PetoryApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Petory',
-      theme: ThemeData(
-        fontFamily: 'Pretendard',
-      ),
+      theme: ThemeData(fontFamily: 'Pretendard'),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -552,6 +550,7 @@ class _MainPageState extends State<MainPage> {
         },
       ),
       AiChatPage(
+        key: ValueKey(record.selectedPetId),
         onRefresh: () {
           record.saveToStorage();
           setState(() {});
@@ -753,8 +752,12 @@ class _EmergencyDialogState extends State<EmergencyDialog> {
   }
 
   Future<void> _fetchHospitals() async {
-    const String clientId = "LxZobpd8acNKliAp598K"; // [주의] 발급받은 ID 확인
-    const String clientSecret = "YzsiQVnnCB"; // [주의] 발급받은 Secret 확인
+    const String clientId = String.fromEnvironment(
+      'NAVER_CLIENT_ID',
+    ); // [주의] 발급받은 ID 확인
+    const String clientSecret = String.fromEnvironment(
+      'NAVER_CLIENT_KEY',
+    ); // [주의] 발급받은 Secret 확인
 
     try {
       // 1. 위치 권한 확인 및 요청

@@ -4,6 +4,9 @@ import '../record/record_data.dart' as record;
 import 'ai_chat_models.dart';
 import 'ai_chat_widgets.dart';
 
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+
 class AiChatPage extends StatefulWidget {
   final VoidCallback? onRefresh;
   const AiChatPage({super.key, this.onRefresh});
@@ -24,9 +27,34 @@ class _AiChatPageState extends State<AiChatPage> {
   @override
   void initState() {
     super.initState();
+    // checkAvailableModels();
     _resetChat();
     _initGemini();
   }
+
+  // void checkAvailableModels() async {
+  //   const apiKey = 'YOUR_API_KEY'; // 여기에 실제 키 입력
+  //   final url = Uri.parse(
+  //     'https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyAst0clfoDv3fJgAyXs5oIS0KtQyD3CvF4',
+  //   );
+
+  //   try {
+  //     final response = await http.get(url);
+
+  //     if (response.statusCode == 200) {
+  //       final data = jsonDecode(response.body);
+  //       print("=== 사용 가능한 모델 목록 ===");
+  //       for (var model in data['models']) {
+  //         // 보기 편하게 이름만 출력
+  //         print(model['name']);
+  //       }
+  //     } else {
+  //       print("에러 발생: ${response.statusCode} - ${response.body}");
+  //     }
+  //   } catch (e) {
+  //     print("호출 실패: $e");
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -77,7 +105,7 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   void _initGemini() {
-    const String apiKey = 'AIzaSyDAJdn0K6M0eTpn30JzJN1m9uoCSxJQv2U';
+    const String apiKey = String.fromEnvironment('GEMINI_API_KEY');
 
     String petName = _getCurrentPetName();
     String petContext = _getPetProfileContext();
@@ -177,6 +205,7 @@ class _AiChatPageState extends State<AiChatPage> {
       // 답변 길이만큼 늘어난 화면을 위해 스크롤 보정
       _scrollToBottom();
     } catch (e) {
+      debugPrint('Gemini API 실제 에러 내용: $e');
       setState(() {
         _messages.removeLast(); // 에러 시에도 점 세 개 제거
         _messages.add(
