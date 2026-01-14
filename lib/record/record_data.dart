@@ -43,6 +43,7 @@ Map<String, Map<String, dynamic>> petProfiles = {
     "weight": "32",
     "gender": "male",
     "isNeutered": true,
+    "activityLevel": "보통",
     "imagePath": "assets/images/golden.jpg",
   },
 };
@@ -258,6 +259,7 @@ String addPetProfileFromPet(Pet pet) {
     'weight': pet.weight,
     'gender': pet.gender,
     'isNeutered': pet.isNeutered,
+    'activityLevel': pet.activityLevel,
     'imagePath': imagePath,
   };
   petChecklists.putIfAbsent(newId, () => {});
@@ -278,16 +280,19 @@ int calculateDailyFood(
   final bool isNeutered =
       profile['isNeutered'] == true ||
       profile['isNeutered'].toString() == 'true';
-  final String type = profile['type']?.toString() ?? '강아지';
-
   final double rer = 70 * pow(weight, 0.75).toDouble();
-  double k = (type == '강아지')
-      ? (isNeutered ? 1.6 : 1.8)
-      : (isNeutered ? 1.2 : 1.4);
-
-  if (activityLevel == '저활동') k -= 0.2;
-  if (activityLevel == '활발') k += 0.4;
-  return (rer * k / 3.5).round();
+  String level = activityLevel == '저활동' ? '저조' : activityLevel;
+  double factor = 1.6;
+  if (isNeutered) {
+    if (level == '저조') factor = 1.2;
+    if (level == '보통') factor = 1.6;
+    if (level == '활발') factor = 2.0;
+  } else {
+    if (level == '저조') factor = 1.4;
+    if (level == '보통') factor = 1.8;
+    if (level == '활발') factor = 2.5;
+  }
+  return (rer * factor).round();
 }
 
 List<Schedule> getActiveAlarmsForNext24Hours() {

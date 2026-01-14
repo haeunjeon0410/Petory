@@ -556,6 +556,7 @@ class _PetRegisterSheetState extends State<PetRegisterSheet> {
       weight: _weightController.text,
       gender: _gender,
       isNeutered: _isNeutered,
+      activityLevel: widget.existingPet?.activityLevel ?? '보통',
       imageFile: _selectedImage,
       imageAsset: _selectedImage == null ? _savedImageAsset : null,
     );

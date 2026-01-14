@@ -77,6 +77,30 @@ class _NutritionPageState extends State<NutritionPage> {
     return null;
   }
 
+  int _calculateNutrition(Map<String, dynamic> profile, String activityLevel) {
+    final double weight =
+        double.tryParse(profile['weight']?.toString() ?? '0') ?? 0;
+    if (weight <= 0) return 0;
+
+    final bool isNeutered =
+        profile['isNeutered'] == true ||
+        profile['isNeutered'].toString() == 'true';
+
+    final double rer = 70 * pow(weight, 0.75).toDouble();
+    String level = activityLevel == '저활동' ? '저조' : activityLevel;
+    double factor = 1.6;
+    if (isNeutered) {
+      if (level == '저조') factor = 1.2;
+      if (level == '보통') factor = 1.6;
+      if (level == '활발') factor = 2.0;
+    } else {
+      if (level == '저조') factor = 1.4;
+      if (level == '보통') factor = 1.8;
+      if (level == '활발') factor = 2.5;
+    }
+    return (rer * factor).round();
+  }
+
   // [수정] 다이얼로그 호출 시 petId와 현재 선택된 날짜(_selectedDate)를 전달
   void _openWeightDialog(String petId) {
     NutritionDialogs.showWeightDialog(
@@ -442,20 +466,24 @@ class _NutritionPageState extends State<NutritionPage> {
 
                   // (2) 콘텐츠
                   Expanded(
-                    child: Padding(
+                    child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      child: _showStats
-                          ? _buildStatsView(
-                              displayPetName,
-                              history,
-                              latestWeight,
-                              currentPetId,
-                            )
-                          : _buildWeightInputView(
-                              displayWeight,
-                              currentPetId,
-                              displayPetName,
-                            ),
+                      child: Column(
+                        children: [
+                          _showStats
+                              ? _buildStatsView(
+                                  displayPetName,
+                                  history,
+                                  latestWeight,
+                                  currentPetId,
+                                )
+                              : _buildWeightInputView(
+                                  displayWeight,
+                                  currentPetId,
+                                  displayPetName,
+                                ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

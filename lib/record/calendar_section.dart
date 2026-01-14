@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
@@ -368,6 +369,17 @@ class _CalendarSectionState extends State<CalendarSection> {
     );
   }
 
+  void _showAlbumDialog() {
+    if (widget.selectedPetName.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (_) => _MonthlyAlbumDialog(
+        petId: widget.selectedPetName,
+        initialMonth: _focusedDay,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -428,10 +440,17 @@ class _CalendarSectionState extends State<CalendarSection> {
   }
 
   Widget _buildHeader() {
+    const EdgeInsets iconPadding = EdgeInsets.all(4);
+    const BoxConstraints iconConstraints = BoxConstraints.tightFor(
+      width: 32,
+      height: 32,
+    );
     return Row(
       children: [
         IconButton(
           icon: const Icon(Icons.chevron_left, color: Color(0xFF44403B)),
+          padding: iconPadding,
+          constraints: iconConstraints,
           onPressed: () => setState(
             () =>
                 _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1),
@@ -449,14 +468,243 @@ class _CalendarSectionState extends State<CalendarSection> {
             ),
           ),
         ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right, color: Color(0xFF44403B)),
-          onPressed: () => setState(
-            () =>
-                _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1),
-          ),
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.chevron_right, color: Color(0xFF44403B)),
+              padding: iconPadding,
+              constraints: iconConstraints,
+              onPressed: () => setState(
+                () =>
+                    _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1),
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: _showAlbumDialog,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F2ED),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  '앨범',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF44403B),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+}
+
+class _MonthlyAlbumDialog extends StatefulWidget {
+  final String petId;
+  final DateTime initialMonth;
+
+  const _MonthlyAlbumDialog({
+    required this.petId,
+    required this.initialMonth,
+  });
+
+  @override
+  State<_MonthlyAlbumDialog> createState() => _MonthlyAlbumDialogState();
+}
+
+class _MonthlyAlbumDialogState extends State<_MonthlyAlbumDialog> {
+  late DateTime _currentMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentMonth = DateTime(widget.initialMonth.year, widget.initialMonth.month);
+  }
+
+  List<MapEntry<DateTime, String>> _getMonthPhotos() {
+    final List<MapEntry<DateTime, String>> items = [];
+    final petPhotos = record.photos[widget.petId];
+    if (petPhotos == null) return items;
+
+    petPhotos.forEach((date, paths) {
+      if (date.year == _currentMonth.year && date.month == _currentMonth.month) {
+        for (final path in paths) {
+          items.add(MapEntry(date, path));
+        }
+      }
+    });
+    items.sort((a, b) => a.key.compareTo(b.key));
+    return items;
+  }
+
+  void _showPhotoPreview(String path) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.85),
+      builder: (context) => GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(12),
+          child: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  child: Image.file(
+                    File(path),
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.error_outline, color: Colors.white),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = _getMonthPhotos();
+    const EdgeInsets iconPadding = EdgeInsets.all(4);
+    const BoxConstraints iconConstraints = BoxConstraints.tightFor(
+      width: 32,
+      height: 32,
+    );
+    return Dialog(
+      backgroundColor: AppDialogStyle.background,
+      shape: AppDialogStyle.shape(),
+      insetPadding: AppDialogStyle.insetPadding,
+      child: Padding(
+        padding: AppDialogStyle.contentPadding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left, color: Color(0xFF44403B)),
+                  padding: iconPadding,
+                  constraints: iconConstraints,
+                  onPressed: () => setState(
+                    () => _currentMonth =
+                        DateTime(_currentMonth.year, _currentMonth.month - 1),
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      DateFormat('yyyy년 M월').format(_currentMonth),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF44403B),
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon:
+                      const Icon(Icons.chevron_right, color: Color(0xFF44403B)),
+                  padding: iconPadding,
+                  constraints: iconConstraints,
+                  onPressed: () => setState(
+                    () => _currentMonth =
+                        DateTime(_currentMonth.year, _currentMonth.month + 1),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Color(0xFF44403B)),
+                  padding: iconPadding,
+                  constraints: iconConstraints,
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (photos.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  '이번 달에 등록된 사진이 없습니다.',
+                  style: TextStyle(color: Colors.black, fontSize: 14),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                ),
+                child: SingleChildScrollView(
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: photos.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 18,
+                      crossAxisSpacing: 18,
+                      childAspectRatio: 1.0,
+                    ),
+                    itemBuilder: (context, index) {
+                      final entry = photos[index];
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: GestureDetector(
+                          onTap: () => _showPhotoPreview(entry.value),
+                          child: Image.file(
+                            File(entry.value),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              color: const Color(0xFFE7E5E4),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.error_outline,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

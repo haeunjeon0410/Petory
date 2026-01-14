@@ -9,6 +9,7 @@ class Pet {
   final String weight;
   final String? gender;
   final bool? isNeutered;
+  String activityLevel;
   final File? imageFile; // File 이미지
   final String? imageAsset; // Asset 이미지 (필요시)
 
@@ -21,6 +22,7 @@ class Pet {
     this.weight = "",
     this.gender,
     this.isNeutered,
+    this.activityLevel = "보통",
     this.imageFile,
     this.imageAsset,
   });
@@ -36,6 +38,7 @@ class Pet {
       weight: map['weight'] ?? "",
       gender: map['gender'],
       isNeutered: map['isNeutered'],
+      activityLevel: map['activityLevel'] ?? "보통",
       imageFile: map['image'] is File ? map['image'] : null,
       imageAsset: map['image'] is String ? map['image'] : null,
     );
@@ -52,6 +55,7 @@ class Pet {
       'weight': weight,
       'gender': gender,
       'isNeutered': isNeutered,
+      'activityLevel': activityLevel,
       'image': imageFile ?? imageAsset,
     };
   }
