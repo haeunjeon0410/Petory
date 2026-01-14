@@ -395,46 +395,60 @@ class _CalendarSectionState extends State<CalendarSection> {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          _buildHeader(),
-          TableCalendar(
-            locale: 'ko_KR',
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2035, 12, 31),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            headerVisible: false,
-            rowHeight: 64,
-            daysOfWeekHeight: 32,
-            sixWeekMonthsEnforced: true,
-            availableGestures: AvailableGestures.horizontalSwipe,
-            onPageChanged: (focusedDay) {
-              setState(() => _focusedDay = focusedDay);
-              if (widget.onDayChanged != null) {
-                widget.onDayChanged!(_selectedDay, _focusedDay);
-              }
-            },
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
-              if (widget.onDayChanged != null) {
-                widget.onDayChanged!(_selectedDay, _focusedDay);
-              }
-              _showScheduleListDialog(context, selectedDay);
-            },
-            calendarBuilders: CalendarBuilders(
-              defaultBuilder: (context, day, _) => _buildDayCell(day),
-              todayBuilder: (context, day, _) => _buildDayCell(day),
-              selectedBuilder: (context, day, _) =>
-                  _buildDayCell(day, isSelected: true),
-              outsideBuilder: (context, day, _) =>
-                  _buildDayCell(day, textColor: Colors.grey.withOpacity(0.5)),
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const double headerHeight = 36;
+          const double daysOfWeekHeight = 32;
+          final double availableHeight =
+              constraints.maxHeight - headerHeight;
+          final double rowHeight =
+              ((availableHeight - daysOfWeekHeight) / 6).clamp(50.0, 70.0);
+
+          return Column(
+            children: [
+              SizedBox(
+                height: headerHeight,
+                child: _buildHeader(),
+              ),
+              TableCalendar(
+                locale: 'ko_KR',
+                firstDay: DateTime.utc(2020, 1, 1),
+                lastDay: DateTime.utc(2035, 12, 31),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                headerVisible: false,
+                rowHeight: rowHeight,
+                daysOfWeekHeight: daysOfWeekHeight,
+                sixWeekMonthsEnforced: true,
+                availableGestures: AvailableGestures.horizontalSwipe,
+                onPageChanged: (focusedDay) {
+                  setState(() => _focusedDay = focusedDay);
+                  if (widget.onDayChanged != null) {
+                    widget.onDayChanged!(_selectedDay, _focusedDay);
+                  }
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                  });
+                  if (widget.onDayChanged != null) {
+                    widget.onDayChanged!(_selectedDay, _focusedDay);
+                  }
+                  _showScheduleListDialog(context, selectedDay);
+                },
+                calendarBuilders: CalendarBuilders(
+                  defaultBuilder: (context, day, _) => _buildDayCell(day),
+                  todayBuilder: (context, day, _) => _buildDayCell(day),
+                  selectedBuilder: (context, day, _) =>
+                      _buildDayCell(day, isSelected: true),
+                  outsideBuilder: (context, day, _) =>
+                      _buildDayCell(day, textColor: Colors.grey.withOpacity(0.5)),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

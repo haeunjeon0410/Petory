@@ -14,7 +14,7 @@ class RecordPage extends StatefulWidget {
 }
 
 class _RecordPageState extends State<RecordPage> {
-  static const double _recordCardHeight = 520;
+  static const double _recordCardHeight = 460;
   // [State] 날짜 제어 및 컨트롤러 (누트리션 페이지와 동일)
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
@@ -434,8 +434,9 @@ class _RecordPageState extends State<RecordPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const SizedBox(height: 8),
                   _buildHeader(displayPetName),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 24),
                   // 3. ??? ?? / ?? ??
                   _showAlbum
                       ? _buildAlbumView(currentPetId)

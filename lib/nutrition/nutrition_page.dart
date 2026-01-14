@@ -22,6 +22,7 @@ class _NutritionPageState extends State<NutritionPage> {
   late PageController _dateController;
   DateTime _selectedDate = DateTime.now();
   bool _showStats = false; // false: 기록(Input), true: 통계(Chart)
+  static const double _statsCardHeight = 460;
 
   @override
   void initState() {
@@ -391,14 +392,17 @@ class _NutritionPageState extends State<NutritionPage> {
   ) {
     return Padding(
       padding: const EdgeInsets.only(top: 20),
-      child: WeightTrendCard(
-        petName: displayPetName,
-        history: history,
-        currentWeight: currentWeight,
-        onUpdate: () {
-          setState(() => _syncProfileWeight(petId));
-          widget.onRefresh?.call();
-        },
+      child: SizedBox(
+        height: _statsCardHeight,
+        child: WeightTrendCard(
+          petName: displayPetName,
+          history: history,
+          currentWeight: currentWeight,
+          onUpdate: () {
+            setState(() => _syncProfileWeight(petId));
+            widget.onRefresh?.call();
+          },
+        ),
       ),
     );
   }

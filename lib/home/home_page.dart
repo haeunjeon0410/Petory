@@ -13,6 +13,7 @@ import 'sheets/task_editor_sheet.dart';
 import 'sheets/task_detail_dialog.dart';
 import '../shared/app_dialog_style.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -411,7 +412,7 @@ class _HomePageState extends State<HomePage> {
                                   child: Text(
                                     currentPet.name,
                                     style: const TextStyle(
-                                      fontSize: 40,
+                                      fontSize: 45,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: -0.3,
                                       color: Colors.white,
@@ -419,7 +420,7 @@ class _HomePageState extends State<HomePage> {
                                       shadows: [
                                         Shadow(
                                           color: Colors.black26,
-                                          blurRadius: 6,
+                                          blurRadius: 0,
                                           offset: Offset(0, 2),
                                         ),
                                       ],
@@ -693,7 +694,7 @@ class _HomePageState extends State<HomePage> {
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFF3B3B3B),
+                                    color: Color.fromARGB(255, 72, 142, 170),
                                   ),
                                 ),
                               ],
@@ -1048,9 +1049,9 @@ class _HomePageState extends State<HomePage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      buildOption('저조', Icons.pets),
+                      buildOption('저조', PhosphorIconsBold.moonStars),
                       buildOption('보통', Icons.directions_walk),
-                      buildOption('활발', Icons.run_circle),
+                      buildOption('활발', PhosphorIconsBold.dog),
                     ],
                   ),
                 ),
@@ -1099,7 +1100,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-                        const SizedBox(height: 12),
+        const SizedBox(height: 12),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
